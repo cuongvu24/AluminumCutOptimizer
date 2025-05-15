@@ -26,6 +26,22 @@ with st.sidebar:
         "Tối Ưu Trong Khoảng Giá Trị"
     ])
 
+    if optimization_options == "Tối Ưu Trong Khoảng Giá Trị":
+        st.markdown("---")
+        st.markdown("**Cấu Hình Khoảng Tối Ưu**")
+        min_len = st.number_input("Chiều Dài Tối Thiểu (mm)", min_value=1000, max_value=10000, value=5500, step=100)
+        max_len = st.number_input("Chiều Dài Tối Đa (mm)", min_value=min_len, max_value=20000, value=6500, step=100)
+        step_len = st.number_input("Bước Tăng Kích Thước (mm)", min_value=100, value=100, step=100)
+
+        stock_length_options = list(range(min_len, max_len + 1, step_len))
+        optimize_stock_length = True
+    elif optimization_options == "Tối Ưu Trong Các Giá Trị Cố Định":
+        stock_length_options = [3000, 4000, 5000, 5500, 6000, 6500]
+        optimize_stock_length = True
+    else:
+        stock_length_options = [stock_length]
+        optimize_stock_length = False
+
 st.title("✂️ Phần Mềm Tối Ưu Cắt Nhôm")
 st.markdown("[📦 Xem mã nguồn trên GitHub](https://github.com/hero9xhn/AluminumCutOptimizer)")
 st.markdown("""
@@ -64,8 +80,8 @@ if uploaded_file:
                     stock_length=stock_length,
                     cutting_gap=cutting_gap,
                     optimization_method=optimization_method,
-                    stock_length_options=[stock_length],
-                    optimize_stock_length=False
+                    stock_length_options=stock_length_options,
+                    optimize_stock_length=optimize_stock_length
                 )
                 end_time = time.time()
 
