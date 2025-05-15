@@ -120,19 +120,18 @@ if uploaded_file:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
 
                 summary_df = summary_df.rename(columns={
-                'Profile Code': 'Mã Thanh',
-                'Total Pieces': 'Tổng Số Đoạn',
-                'Total Bars Used': 'Tổng Thanh Sử Dụng',
-                'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-                'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-                'Waste (mm)': 'Phế Liệu (mm)',
-                'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-                'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
-            })
+    'Profile Code': 'Mã Thanh',
+    'Total Pieces': 'Tổng Số Đoạn',
+    'Total Bars Used': 'Tổng Thanh Sử Dụng',
+    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+    'Waste (mm)': 'Phế Liệu (mm)',
+    'Efficiency': 'Hiệu Suất (%)'
+})
             st.dataframe(summary_df)
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
             patterns_df = patterns_df.rename(columns={
-     'Profile Code': 'Mã Thanh',
+    'Profile Code': 'Mã Thanh',
     'Bar Number': 'Số Thanh',
     'Cutting Pattern': 'Mẫu Cắt',
     'Stock Length': 'Chiều Dài Thanh',
