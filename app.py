@@ -7,14 +7,14 @@ from utils import validate_input_excel, create_output_excel
 import io
 import time
 
-# Set page config
+# Cấu hình trang
 st.set_page_config(
     page_title="Phần Mềm Tối Ưu Cắt Nhôm",
     page_icon="✂️",
     layout="wide"
 )
 
-# Sidebar layout
+# Sidebar
 with st.sidebar:
     st.title("✂️ Phần mềm tối ưu cắt nhôm")
     stock_length = st.number_input("Chiều Dài Tiêu Chuẩn (mm)", min_value=1000, value=6000, step=100)
@@ -27,7 +27,6 @@ with st.sidebar:
     ])
 
     if optimization_options == "Tối Ưu Trong Khoảng Giá Trị":
-        st.markdown("---")
         st.markdown("**Cấu Hình Khoảng Tối Ưu**")
         min_len = st.number_input("Chiều Dài Tối Thiểu (mm)", min_value=1000, max_value=10000, value=5500, step=100)
         max_len = st.number_input("Chiều Dài Tối Đa (mm)", min_value=min_len, max_value=20000, value=6500, step=100)
@@ -36,54 +35,29 @@ with st.sidebar:
         stock_length_options = list(range(min_len, max_len + 1, step_len))
         optimize_stock_length = True
     elif optimization_options == "Tối Ưu Trong Các Giá Trị Cố Định":
-        st.markdown("---")
         st.markdown("**Nhập Danh Sách Kích Thước Cố Định (mm)**")
-        custom_lengths_text = st.text_area(
-            "Nhập các kích thước, cách nhau bằng dấu phẩy hoặc xuống dòng:",
-            value="3000, 4000, 5000, 5500, 6000, 6500"
-        )
+        custom_lengths_text = st.text_area("Nhập các kích thước, cách nhau bằng dấu phẩy hoặc xuống dòng:", "3000, 4000, 5000, 5500, 6000, 6500")
 
-        if "," in custom_lengths_text:
-            custom_lengths_raw = custom_lengths_text.split(",")
-        else:
-            custom_lengths_raw = custom_lengths_text.splitlines()
-
-        stock_length_options = []
-        for val in custom_lengths_raw:
-            val = val.strip()
-            if val.isdigit():
-                stock_length_options.append(int(val))
-
+        custom_lengths_raw = custom_lengths_text.replace("\n", ",").split(",")
+        stock_length_options = [int(val.strip()) for val in custom_lengths_raw if val.strip().isdigit()]
         if not stock_length_options:
             st.warning("⚠️ Danh sách kích thước không hợp lệ. Sử dụng mặc định: 6000mm")
             stock_length_options = [6000]
 
         optimize_stock_length = True
-        optimize_stock_length = True
-        st.markdown(f"✅ Danh sách kích thước đã nhập: `{', '.join(map(str, stock_length_options))}`")
     else:
         stock_length_options = [stock_length]
         optimize_stock_length = False
 
+# Tiêu đề và hướng dẫn
 st.title("✂️ Phần Mềm Tối Ưu Cắt Nhôm")
 st.markdown("[📦 Xem mã nguồn trên GitHub](https://github.com/hero9xhn/AluminumCutOptimizer)")
 st.markdown("""
-Phần mềm này giúp tối ưu hóa các mẫu cắt nhôm để giảm thiểu lãng phí. Tải lên file Excel
-với thông tin các thanh nhôm và kích thước, và nhận kế hoạch cắt tối ưu với số liệu chi tiết.
+Phần mềm giúp tối ưu hóa cắt nhôm để giảm lãng phí. Tải lên file Excel với thông tin các thanh nhôm,
+và nhận kế hoạch cắt tối ưu với số liệu chi tiết.
 """)
 
-# Hướng dẫn
-with st.expander("📖 Hướng Dẫn Nhập Dữ Liệu", expanded=False):
-    st.markdown("""
-    File Excel của bạn nên chứa các cột sau:
-    1. **Mã Thanh** - Mã/model của thanh nhôm
-    2. **Chiều Dài** - Chiều dài yêu cầu của mỗi thanh (mm)
-    3. **Số Lượng** - Số lượng cần thiết cho mỗi thanh
-
-    Bạn có thể tải biểu mẫu mẫu ở cuối trang.
-    """)
-
-# Nội dung xử lý chính sẽ đặt ở giữa layout
+# Tải lên file Excel
 uploaded_file = st.file_uploader("📤 Tải Lên File Excel Đầu Vào", type=["xlsx", "xls"])
 
 if uploaded_file:
@@ -108,37 +82,36 @@ if uploaded_file:
                 )
                 end_time = time.time()
 
-            st.success(f"🎉 Tối ưu hóa hoàn tất sau {end_time - start_time:.2f} giây")
+            st.success(f"🎉 Hoàn tất sau {end_time - start_time:.2f} giây")
+
+            # Bảng tổng hợp hiệu suất
             st.subheader("📊 Bảng tổng hợp hiệu suất")
-
-            # Tính toán hiệu suất nếu chưa có sẵn
             if 'Efficiency' not in summary_df.columns:
-                try:
-                    summary_df['Efficiency'] = summary_df['Total Length Needed (mm)'] / summary_df['Total Stock Length (mm)']
-                    summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
-                except Exception as eff_err:
-                    st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
+                summary_df['Efficiency'] = summary_df['Total Length Needed (mm)'] / summary_df['Total Stock Length (mm)']
+                summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
 
-                    summary_df = summary_df.rename(columns={
-                    File "/mount/src/aluminumcutoptimizer/app.py", line 122
-                                                  summary_df = summary_df.rename(columns={
-                                                 ^
-IndentationError: unexpected indent
-                })
+            summary_df = summary_df.rename(columns={
+                "Total Length Needed (mm)": "Chiều Dài Cần (mm)",
+                "Total Stock Length (mm)": "Chiều Dài Thanh (mm)",
+                "Efficiency": "Hiệu Suất"
+            })
             st.dataframe(summary_df)
+
+            # Danh sách mẫu cắt
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
             patterns_df = patterns_df.rename(columns={
-    'Profile Code': 'Mã Thanh',
-    'Bar Number': 'Số Thanh',
-    'Cutting Pattern': 'Mẫu Cắt',
-    'Stock Length': 'Chiều Dài Thanh',
-    'Used Length': 'Chiều Dài Sử Dụng',
-    'Waste': 'Chiều Dài Còn Lại',
-    'Efficiency': 'Hiệu Suất',
-    'Segment Count': 'Số Đoạn Cắt'
-})
+                "Profile Code": "Mã Thanh",
+                "Bar Number": "Số Thanh",
+                "Cutting Pattern": "Mẫu Cắt",
+                "Stock Length": "Chiều Dài Thanh",
+                "Used Length": "Chiều Dài Sử Dụng",
+                "Waste": "Chiều Dài Còn Lại",
+                "Efficiency": "Hiệu Suất",
+                "Segment Count": "Số Đoạn Cắt"
+            })
             st.dataframe(patterns_df)
 
+            # Tải kết quả về máy
             st.subheader("📥 Tải kết quả về máy")
             output = io.BytesIO()
             create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
