@@ -114,10 +114,20 @@ if uploaded_file:
             # Tính toán hiệu suất nếu chưa có sẵn
             if 'Efficiency' not in summary_df.columns:
                 try:
-                    summary_df['Efficiency'] = summary_df['Total Used Length (mm)'] / summary_df['Total Stock Length (mm)']
+                    summary_df['Efficiency'] = summary_df['Total Length Needed (mm)'] / summary_df['Total Stock Length (mm)']
                     summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
+                        summary_df = summary_df.rename(columns={
+                'Profile Code': 'Mã Thanh',
+                'Total Pieces': 'Tổng Số Đoạn',
+                'Total Bars Used': 'Tổng Thanh Sử Dụng',
+                'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+                'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+                'Waste (mm)': 'Phế Liệu (mm)',
+                'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+                'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
+            })
             st.dataframe(summary_df)
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
             patterns_df = patterns_df.rename(columns={
@@ -134,7 +144,7 @@ if uploaded_file:
 
             st.subheader("📥 Tải kết quả về máy")
             output = io.BytesIO()
-            create_output_excel(output, patterns_df, summary_df, stock_length, cutting_gap)
+            create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
             output.seek(0)
             st.download_button("📥 Tải xuống bảng Excel kết quả", output, "ket_qua_toi_uu.xlsx")
 
