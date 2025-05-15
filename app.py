@@ -119,14 +119,11 @@ if uploaded_file:
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
 
-                                                summary_df = summary_df.rename(columns={
-                    'Profile Code': 'Mã Thanh',
-                    'Total Pieces': 'Tổng Số Đoạn',
-                    'Total Bars Used': 'Tổng Thanh Sử Dụng',
-                    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-                    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-                    'Waste (mm)': 'Phế Liệu (mm)',
-                    'Efficiency': 'Hiệu Suất'
+                                                                summary_df = summary_df.rename(columns={
+                    File "/mount/src/aluminumcutoptimizer/app.py", line 122
+                                                  summary_df = summary_df.rename(columns={
+                                                 ^
+IndentationError: unexpected indent
                 })
             st.dataframe(summary_df)
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
