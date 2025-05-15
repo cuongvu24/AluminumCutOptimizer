@@ -125,14 +125,14 @@ if uploaded_file:
                 
                 # Áp dụng cho summary_df
                 summary_df = safe_rename(summary_df, {
-                'Profile Code': 'Mã Thanh',
-                'Total Pieces': 'Tổng Số Đoạn',
-                'Total Bars Used': 'Tổng Thanh Sử Dụng',
-                'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-                'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-                'Waste (mm)': 'Phế Liệu (mm)',
-                'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-                'Efficiency': 'Hiệu Suất (%)'
+        'Profile Code': 'Mã Thanh',
+        'Total Pieces': 'Tổng Số Đoạn',
+        'Total Bars Used': 'Tổng Thanh Sử Dụng',
+        'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+        'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+        'Waste (mm)': 'Phế Liệu (mm)',
+        'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+        'Efficiency': 'Hiệu Suất (%)'
 })
                 
                 # Áp dụng cho patterns_df
