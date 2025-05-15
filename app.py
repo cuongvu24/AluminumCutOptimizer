@@ -36,8 +36,31 @@ with st.sidebar:
         stock_length_options = list(range(min_len, max_len + 1, step_len))
         optimize_stock_length = True
     elif optimization_options == "Tối Ưu Trong Các Giá Trị Cố Định":
-        stock_length_options = [3000, 4000, 5000, 5500, 6000, 6500]
+        st.markdown("---")
+        st.markdown("**Nhập Danh Sách Kích Thước Cố Định (mm)**")
+        custom_lengths_text = st.text_area(
+            "Nhập các kích thước, cách nhau bằng dấu phẩy hoặc xuống dòng:",
+            value="3000, 4000, 5000, 5500, 6000, 6500"
+        )
+
+        if "," in custom_lengths_text:
+            custom_lengths_raw = custom_lengths_text.split(",")
+        else:
+            custom_lengths_raw = custom_lengths_text.splitlines()
+
+        stock_length_options = []
+        for val in custom_lengths_raw:
+            val = val.strip()
+            if val.isdigit():
+                stock_length_options.append(int(val))
+
+        if not stock_length_options:
+            st.warning("⚠️ Danh sách kích thước không hợp lệ. Sử dụng mặc định: 6000mm")
+            stock_length_options = [6000]
+
         optimize_stock_length = True
+        optimize_stock_length = True
+        st.markdown(f"✅ Danh sách kích thước đã nhập: `{', '.join(map(str, stock_length_options))}`")
     else:
         stock_length_options = [stock_length]
         optimize_stock_length = False
