@@ -119,7 +119,7 @@ if uploaded_file:
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
 
-                                                                summary_df = summary_df.rename(columns={
+                    summary_df = summary_df.rename(columns={
                     File "/mount/src/aluminumcutoptimizer/app.py", line 122
                                                   summary_df = summary_df.rename(columns={
                                                  ^
