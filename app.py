@@ -125,8 +125,7 @@ if uploaded_file:
     'Total Bars Used': 'Tổng Thanh Sử Dụng',
     'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
     'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-    'Waste (mm)': 'Phế Liệu (mm)',
-    'Efficiency': 'Hiệu Suất (%)'
+    'Waste (mm)': 'Phế Liệu (mm)'
 })
             st.dataframe(summary_df)
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
