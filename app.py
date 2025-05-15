@@ -121,16 +121,16 @@ if uploaded_file:
             st.dataframe(summary_df)
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
             patterns_df = patterns_df.rename(columns={
-        'Profile Code': 'Mã Thanh',
-        'Bar Number': 'Số Thanh',
-        'Cutting Pattern': 'Mẫu Cắt',
-        'Stock Length': 'Chiều Dài Thanh',
-        'Used Length': 'Chiều Dài Sử Dụng',
-        'Waste': 'Chiều Dài Còn Lại',
-        'Efficiency': 'Hiệu Suất',
-        'Segment Count': 'Số Đoạn Cắt'
+    'Profile Code': 'Mã Thanh',
+    'Bar Number': 'Số Thanh',
+    'Cutting Pattern': 'Mẫu Cắt',
+    'Stock Length': 'Chiều Dài Thanh',
+    'Used Length': 'Chiều Dài Sử Dụng',
+    'Waste': 'Chiều Dài Còn Lại',
+    'Efficiency': 'Hiệu Suất',
+    'Segment Count': 'Số Đoạn Cắt'
 })
-st.dataframe(patterns_df)
+            st.dataframe(patterns_df)
 
             st.subheader("📥 Tải kết quả về máy")
             output = io.BytesIO()
