@@ -117,22 +117,17 @@ if uploaded_file:
                     summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
-
-                def safe_rename(df, rename_dict):
-                    # Chỉ đổi tên các cột có trong rename_dict và tồn tại trong df
-                    valid_rename = {k: v for k, v in rename_dict.items() if k in df.columns}
-                    return df.rename(columns=valid_rename)
                 
                 # Áp dụng cho summary_df
                 summary_df = safe_rename(summary_df, {
-        'Profile Code': 'Mã Thanh',
-        'Total Pieces': 'Tổng Số Đoạn',
-        'Total Bars Used': 'Tổng Thanh Sử Dụng',
-        'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-        'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-        'Waste (mm)': 'Phế Liệu (mm)',
-        'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-        'Efficiency': 'Hiệu Suất (%)'
+                    'Profile Code': 'Mã Thanh',
+                    'Total Pieces': 'Tổng Số Đoạn',
+                    'Total Bars Used': 'Tổng Thanh Sử Dụng',
+                    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+                    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+                    'Waste (mm)': 'Phế Liệu (mm)',
+                    'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+                    'Efficiency': 'Hiệu Suất (%)'
 })
                 
                 # Áp dụng cho patterns_df
