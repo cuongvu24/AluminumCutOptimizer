@@ -40,7 +40,7 @@ with st.sidebar:
         st.markdown("**Nhập Danh Sách Kích Thước Cố Định (mm)**")
         custom_lengths_text = st.text_area(
             "Nhập các kích thước, cách nhau bằng dấu phẩy hoặc xuống dòng:",
-            value=" 5000, 5500, 6000, 6500"
+            value="3000, 4000, 5000, 5500, 6000, 6500"
         )
 
         if "," in custom_lengths_text:
@@ -58,6 +58,7 @@ with st.sidebar:
             st.warning("⚠️ Danh sách kích thước không hợp lệ. Sử dụng mặc định: 6000mm")
             stock_length_options = [6000]
 
+        optimize_stock_length = True
         optimize_stock_length = True
         st.markdown(f"✅ Danh sách kích thước đã nhập: `{', '.join(map(str, stock_length_options))}`")
     else:
@@ -117,28 +118,28 @@ if uploaded_file:
                     summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
-                
-                summary_df = summary_df.rename(columns={
-        'Profile Code': 'Mã Thanh',
-        'Total Pieces': 'Tổng Số Đoạn',
-        'Total Bars Used': 'Tổng Thanh Sử Dụng',
-        'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-        'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-        'Waste (mm)': 'Phế Liệu (mm)',
-        'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-        'Efficiency': 'Hiệu Suất (%)'
+
+            summary_df = summary_df.rename(columns={
+    'Profile Code': 'Mã Thanh',
+    'Total Pieces': 'Tổng Số Đoạn',
+    'Total Bars Used': 'Tổng Thanh Sử Dụng',
+    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+    'Waste (mm)': 'Phế Liệu (mm)',
+    'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+    'Efficiency': 'Hiệu Suất (%)'
 })
-                st.dataframe(summary_df)
-                st.subheader("📋 Danh sách mẫu cắt chi tiết")
-                patterns_df = patterns_df.rename(columns={
-        'Profile Code': 'Mã Thanh',
-        'Bar Number': 'Số Thanh',
-        'Stock Length': 'Chiều Dài Thanh',
-        'Used Length': 'Chiều Dài Sử Dụng',
-        'Remaining Length': 'Chiều Dài Còn Lại',
-        'Efficiency': 'Hiệu Suất',
-        'Cutting Pattern': 'Mẫu Cắt',
-        'Pieces': 'Số Đoạn Cắt'
+            st.dataframe(summary_df)
+            st.subheader("📋 Danh sách mẫu cắt chi tiết")
+            patterns_df = patterns_df.rename(columns={
+    'Profile Code': 'Mã Thanh',
+    'Bar Number': 'Số Thanh',
+    'Stock Length': 'Chiều Dài Thanh',
+    'Used Length': 'Chiều Dài Sử Dụng',
+    'Remaining Length': 'Chiều Dài Còn Lại',
+    'Efficiency': 'Hiệu Suất',
+    'Cutting Pattern': 'Mẫu Cắt',
+    'Pieces': 'Số Đoạn Cắt'
 })
             st.dataframe(patterns_df)
 
