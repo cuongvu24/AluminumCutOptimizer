@@ -120,7 +120,7 @@ if uploaded_file:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
                     
             if 'Average Bar Efficiency' in summary_df.columns:
-    summary_df.drop(columns=['Average Bar Efficiency'], inplace=True)
+                summary_df.drop(columns=['Average Bar Efficiency'], inplace=True)
 
             summary_df = summary_df.rename(columns={
     'Profile Code': 'Mã Thanh',
