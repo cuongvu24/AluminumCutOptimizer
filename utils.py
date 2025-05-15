@@ -36,7 +36,9 @@ def validate_input_excel(df):
 
 
 def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock_length, cutting_gap):
-    summary_vi = summary_df.copy()
+        summary_vi = summary_df.copy()
+    if 'Average Bar Efficiency' in summary_vi.columns:
+        summary_vi.drop(columns=['Average Bar Efficiency'], inplace=True)
     patterns_vi = patterns_df.copy()
     result_vi = result_df.copy()
 
