@@ -123,22 +123,22 @@ if uploaded_file:
                     'Profile Code': 'Mã Thanh',
                     'Total Pieces': 'Tổng Số Đoạn',
                     'Total Bars Used': 'Tổng Thanh Sử Dụng',
-                    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-                    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-                    'Waste (mm)': 'Phế Liệu (mm)',
-                    'Efficiency': 'Hiệu Suất (%)'
-                })
+                  'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+                  'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+                  'Waste (mm)': 'Phế Liệu (mm)',
+                  'Efficiency': 'Hiệu Suất (%)'
+})
             st.dataframe(summary_df)
             st.subheader("📋 Danh sách mẫu cắt chi tiết")
             patterns_df = patterns_df.rename(columns={
     'Profile Code': 'Mã Thanh',
     'Bar Number': 'Số Thanh',
-    'Cutting Pattern': 'Mẫu Cắt',
     'Stock Length': 'Chiều Dài Thanh',
     'Used Length': 'Chiều Dài Sử Dụng',
-    'Waste': 'Chiều Dài Còn Lại',
+    'Remaining Length': 'Chiều Dài Còn Lại',
     'Efficiency': 'Hiệu Suất',
-    'Segment Count': 'Số Đoạn Cắt'
+    'Cutting Pattern': 'Mẫu Cắt',
+    'Pieces': 'Số Đoạn Cắt'
 })
             st.dataframe(patterns_df)
 
