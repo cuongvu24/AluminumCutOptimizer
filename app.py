@@ -106,10 +106,6 @@ if uploaded_file:
                     optimize_stock_length=optimize_stock_length
                 )
                 end_time = time.time()
-                
-            # Kiểm tra cột
-            st.write("Cột của summary_df:", summary_df.columns.tolist())
-            st.write("Cột của patterns_df:", patterns_df.columns.tolist())
 
             st.success(f"🎉 Tối ưu hóa hoàn tất sau {end_time - start_time:.2f} giây")
             st.subheader("📊 Bảng tổng hợp hiệu suất")
