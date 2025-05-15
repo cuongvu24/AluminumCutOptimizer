@@ -133,7 +133,7 @@ if uploaded_file:
                     'Waste (mm)': 'Phế Liệu (mm)',
                     'Overall Efficiency': 'Hiệu Suất Tổng Thể',
                     'Efficiency': 'Hiệu Suất (%)'
-                })
+})
                 
                 # Áp dụng cho patterns_df
                 patterns_df = safe_rename(patterns_df, {
