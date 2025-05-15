@@ -118,6 +118,7 @@ if uploaded_file:
                     summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
+
                         summary_df = summary_df.rename(columns={
                 'Profile Code': 'Mã Thanh',
                 'Total Pieces': 'Tổng Số Đoạn',
