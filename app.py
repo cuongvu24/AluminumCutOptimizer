@@ -14,9 +14,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# Sidebar
+# Thanh công cụ bên trái
 with st.sidebar:
-    st.title("✂️ Phần mềm tối ưu cắt nhôm")
+    st.title("✂️ Phần Mềm Tối Ưu Cắt Nhôm")
     stock_length = st.number_input("Chiều Dài Tiêu Chuẩn (mm)", min_value=1000, value=6000, step=100)
     cutting_gap = st.number_input("Khoảng Cách Cắt (mm)", min_value=1, value=10, step=1)
     optimization_method = st.selectbox("Phương Pháp Tối Ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
@@ -85,7 +85,7 @@ if uploaded_file:
             st.success(f"🎉 Hoàn tất sau {end_time - start_time:.2f} giây")
 
             # Bảng tổng hợp hiệu suất
-            st.subheader("📊 Bảng tổng hợp hiệu suất")
+            st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
             if 'Efficiency' not in summary_df.columns:
                 summary_df['Efficiency'] = summary_df['Total Length Needed (mm)'] / summary_df['Total Stock Length (mm)']
                 summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
@@ -98,7 +98,7 @@ if uploaded_file:
             st.dataframe(summary_df)
 
             # Danh sách mẫu cắt
-            st.subheader("📋 Danh sách mẫu cắt chi tiết")
+            st.subheader("📋 Danh Sách Mẫu Cắt Chi Tiết")
             patterns_df = patterns_df.rename(columns={
                 "Profile Code": "Mã Thanh",
                 "Bar Number": "Số Thanh",
@@ -112,11 +112,11 @@ if uploaded_file:
             st.dataframe(patterns_df)
 
             # Tải kết quả về máy
-            st.subheader("📥 Tải kết quả về máy")
+            st.subheader("📥 Tải Kết Quả Về Máy")
             output = io.BytesIO()
             create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
             output.seek(0)
-            st.download_button("📥 Tải xuống bảng Excel kết quả", output, "ket_qua_toi_uu.xlsx")
+            st.download_button("📥 Tải Xuống Bảng Excel Kết Quả", output, "ket_qua_toi_uu.xlsx")
 
     except Exception as e:
         st.error(f"❌ Lỗi xử lý: {e}")
