@@ -16,7 +16,7 @@ st.set_page_config(
 
 # Sidebar layout
 with st.sidebar:
-    st.title("⚙️ Cấu Hình")
+    st.title("✂️ Phần mềm tối ưu cắt nhôm")
     stock_length = st.number_input("Chiều Dài Tiêu Chuẩn (mm)", min_value=1000, value=6000, step=100)
     cutting_gap = st.number_input("Khoảng Cách Cắt (mm)", min_value=1, value=10, step=1)
     optimization_method = st.selectbox("Phương Pháp Tối Ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
@@ -109,7 +109,7 @@ if uploaded_file:
                 end_time = time.time()
 
             st.success(f"🎉 Tối ưu hóa hoàn tất sau {end_time - start_time:.2f} giây")
-            st.subheader("📊 Thống Kê Tổng Hợp")
+            st.subheader("📊 Bảng tổng hợp hiệu suất")
 
             # Tính toán hiệu suất nếu chưa có sẵn
             if 'Efficiency' not in summary_df.columns:
@@ -119,14 +119,24 @@ if uploaded_file:
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
             st.dataframe(summary_df)
-            st.subheader("📋 Mẫu Cắt Chi Tiết")
-            st.dataframe(patterns_df)
+            st.subheader("📋 Danh sách mẫu cắt chi tiết")
+            patterns_df = patterns_df.rename(columns={
+    'Profile Code': 'Mã Thanh',
+    'Bar Number': 'Số Thanh',
+    'Cutting Pattern': 'Mẫu Cắt',
+    'Stock Length': 'Chiều Dài Thanh',
+    'Used Length': 'Chiều Dài Sử Dụng',
+    'Waste': 'Chiều Dài Còn Lại',
+    'Efficiency': 'Hiệu Suất',
+    'Segment Count': 'Số Đoạn Cắt'
+})
+st.dataframe(patterns_df)
 
-            st.subheader("📥 Tải File Kết Quả")
+            st.subheader("📥 Tải kết quả về máy")
             output = io.BytesIO()
-            create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
+            create_output_excel(output, patterns_df, summary_df, stock_length, cutting_gap)
             output.seek(0)
-            st.download_button("Tải Xuống File Excel", output, "ket_qua_toi_uu.xlsx")
+            st.download_button("📥 Tải xuống bảng Excel kết quả", output, "ket_qua_toi_uu.xlsx")
 
     except Exception as e:
         st.error(f"❌ Lỗi xử lý: {e}")
