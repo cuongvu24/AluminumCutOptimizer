@@ -40,7 +40,7 @@ with st.sidebar:
         st.markdown("**Nhập Danh Sách Kích Thước Cố Định (mm)**")
         custom_lengths_text = st.text_area(
             "Nhập các kích thước, cách nhau bằng dấu phẩy hoặc xuống dòng:",
-            value="3000, 4000, 5000, 5500, 6000, 6500"
+            value=" 5000, 5500, 6000, 6500"
         )
 
         if "," in custom_lengths_text:
@@ -58,7 +58,6 @@ with st.sidebar:
             st.warning("⚠️ Danh sách kích thước không hợp lệ. Sử dụng mặc định: 6000mm")
             stock_length_options = [6000]
 
-        optimize_stock_length = True
         optimize_stock_length = True
         st.markdown(f"✅ Danh sách kích thước đã nhập: `{', '.join(map(str, stock_length_options))}`")
     else:
@@ -107,6 +106,10 @@ if uploaded_file:
                     optimize_stock_length=optimize_stock_length
                 )
                 end_time = time.time()
+                
+            # Kiểm tra cột
+            st.write("Cột của summary_df:", summary_df.columns.tolist())
+            st.write("Cột của patterns_df:", patterns_df.columns.tolist())
 
             st.success(f"🎉 Tối ưu hóa hoàn tất sau {end_time - start_time:.2f} giây")
             st.subheader("📊 Bảng tổng hợp hiệu suất")
@@ -119,28 +122,33 @@ if uploaded_file:
                 except Exception as eff_err:
                     st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
 
-            summary_df = summary_df.rename(columns={
-    'Profile Code': 'Mã Thanh',
-    'Total Pieces': 'Tổng Số Đoạn',
-    'Total Bars Used': 'Tổng Thanh Sử Dụng',
-    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-    'Waste (mm)': 'Phế Liệu (mm)',
-    'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-    'Efficiency': 'Hiệu Suất (%)'
-})
-              
-            st.dataframe(summary_df)
-            st.subheader("📋 Danh sách mẫu cắt chi tiết")
-            patterns_df = patterns_df.rename(columns={
-    'Profile Code': 'Mã Thanh',
-    'Bar Number': 'Số Thanh',
-    'Stock Length': 'Chiều Dài Thanh',
-    'Used Length': 'Chiều Dài Sử Dụng',
-    'Remaining Length': 'Chiều Dài Còn Lại',
-    'Efficiency': 'Hiệu Suất',
-    'Cutting Pattern': 'Mẫu Cắt',
-    'Pieces': 'Số Đoạn Cắt'
+                def safe_rename(df, rename_dict):
+                    # Chỉ đổi tên các cột có trong rename_dict và tồn tại trong df
+                    valid_rename = {k: v for k, v in rename_dict.items() if k in df.columns}
+                    return df.rename(columns=valid_rename)
+                
+                # Áp dụng cho summary_df
+                summary_df = safe_rename(summary_df, {
+                    'Profile Code': 'Mã Thanh',
+                    'Total Pieces': 'Tổng Số Đoạn',
+                    'Total Bars Used': 'Tổng Thanh Sử Dụng',
+                    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+                    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+                    'Waste (mm)': 'Phế Liệu (mm)',
+                    'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+                    'Efficiency': 'Hiệu Suất (%)'
+                })
+                
+                # Áp dụng cho patterns_df
+                patterns_df = safe_rename(patterns_df, {
+                    'Profile Code': 'Mã Thanh',
+                    'Bar Number': 'Số Thanh',
+                    'Stock Length': 'Chiều Dài Thanh',
+                    'Used Length': 'Chiều Dài Sử Dụng',
+                    'Remaining Length': 'Chiều Dài Còn Lại',
+                    'Efficiency': 'Hiệu Suất',
+                    'Cutting Pattern': 'Mẫu Cắt',
+                    'Pieces': 'Số Đoạn Cắt'
 })
             st.dataframe(patterns_df)
 
