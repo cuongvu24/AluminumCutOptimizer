@@ -16,6 +16,7 @@ st.set_page_config(
 
 # App title and description
 st.title("✂️ Phần Mềm Tối Ưu Cắt Nhôm")
+st.markdown("[📦 Xem mã nguồn trên GitHub](https://github.com/hero9xhn/AluminumCutOptimizer)")
 st.markdown("""
 Phần mềm này giúp tối ưu hóa các mẫu cắt nhôm để giảm thiểu lãng phí. Tải lên file Excel
 với thông tin các thanh nhôm và kích thước, và nhận kế hoạch cắt tối ưu với số liệu chi tiết.
