@@ -142,10 +142,20 @@ with tab_cat_nhom:
         selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
         filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
         for i, row in filtered.iterrows():
-            st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
-            cuts = row['Mẫu Cắt'].split('+')
-            df_cut = pd.DataFrame({'Đoạn Cắt (mm)': cuts})
-            st.dataframe(df_cut, use_container_width=True, height=200)
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        st.text(f"#{int(row['Số Thanh'])}")
+    with col2:
+        fig_data = []
+        cuts = row['Mẫu Cắt'].split('+')
+        current_x = 0
+        for idx, part in enumerate(cuts):
+            width = float(part)
+            fig_data.append({"x": current_x, "width": width})
+            current_x += width
+
+        chart_df = pd.DataFrame(fig_data)
+        st.bar_chart(chart_df.set_index('x')['width'])
 
         output = io.BytesIO()
         create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
