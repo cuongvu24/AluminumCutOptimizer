@@ -55,7 +55,7 @@ with tab_upload:
     st.markdown("""
     👉 Vui lòng sử dụng các mẫu bên dưới để đảm bảo định dạng chính xác khi nhập liệu:
     - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`
-    - **Mẫu Phụ Kiện** gồm các cột: `mã phụ kiện`, `tên phụ phiện`, `đơn vị tính`, `mã hàng`, `số lượng`
+    - **Mẫu Phụ Kiện** gồm các cột: `mã phụ kiện`, `tên phụ phiện`, `đơn vị tính`, `số lượng`
     """)
     nhom_sample = pd.DataFrame({'Profile Code': ['ABC', 'ABC'], 'Length': [1000, 1200], 'Quantity': [3, 4]})
     out_nhom = io.BytesIO()
