@@ -10,6 +10,11 @@ st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
 uploaded_file = st.file_uploader("📤 Tải lên tệp Excel dữ liệu", type=["xlsx", "xls"])
 
+# Khởi tạo biến lưu kết quả tối ưu để tránh tính lại khi chọn mã thanh
+if 'result_data' not in st.session_state:
+    st.session_state.result_data = None
+
+# Tabs giao diện
 tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
 
 # TAB TẢI MẪU
@@ -86,61 +91,64 @@ with tab_cat_nhom:
                         elapsed = time.time() - start_time
                         st.success(f"✅ Hoàn tất trong {elapsed:.2f} giây")
 
-                        summary_df = summary_df.rename(columns={
-                            'Profile Code': 'Mã Thanh',
-                            'Total Pieces': 'Tổng Đoạn Cắt',
-                            'Total Bars Used': 'Số Thanh Sử Dụng',
-                            'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-                            'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-                            'Waste (mm)': 'Phế Liệu (mm)',
-                            'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-                            'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
-                        })
-                        st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
-                        st.dataframe(summary_df)
+                        # Lưu vào session
+                        st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length, cutting_gap)
 
-                        patterns_df = patterns_df.rename(columns={
-                            'Profile Code': 'Mã Thanh',
-                            'Bar Number': 'Số Thanh',
-                            'Stock Length': 'Chiều Dài Thanh',
-                            'Used Length': 'Chiều Dài Sử Dụng',
-                            'Remaining Length': 'Chiều Dài Còn Lại',
-                            'Efficiency': 'Hiệu Suất',
-                            'Cutting Pattern': 'Mẫu Cắt',
-                            'Pieces': 'Số Đoạn Cắt'
-                        })
-                        st.subheader("📋 Danh Sách Mẫu Cắt")
-                        st.dataframe(patterns_df)
-
-                        result_df = result_df.rename(columns={
-                            'Profile Code': 'Mã Thanh',
-                            'Item ID': 'Mã Mảnh',
-                            'Length': 'Chiều Dài',
-                            'Bar Number': 'Số Thanh'
-                        })
-                        st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
-                        st.dataframe(result_df)
-
-                        st.subheader("📊 Chi Tiết Cắt Từng Thanh")
-                        selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
-                        with st.expander("👁️ Hiển thị chi tiết từng thanh"):
-                            filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
-                            for i, row in filtered.iterrows():
-                                st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
-                                cuts = row['Mẫu Cắt'].split('+')
-                                df_cut = pd.DataFrame({'Đoạn Cắt (mm)': cuts})
-                                st.dataframe(df_cut, use_container_width=True)
-
-                        output = io.BytesIO()
-                        create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
-                        output.seek(0)
-                        st.download_button("📥 Tải Xuống File Kết Quả Cắt Nhôm", output, "ket_qua_cat_nhom.xlsx")
                     except Exception as opt_err:
                         st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
-        except Exception as e:
-            st.error(f"❌ Lỗi xử lý file: {e}")
 
+    # Hiển thị nếu có dữ liệu
+    if st.session_state.result_data:
+        result_df, patterns_df, summary_df, stock_length, cutting_gap = st.session_state.result_data
 
+        summary_df = summary_df.rename(columns={
+            'Profile Code': 'Mã Thanh',
+            'Total Pieces': 'Tổng Đoạn Cắt',
+            'Total Bars Used': 'Số Thanh Sử Dụng',
+            'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+            'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+            'Waste (mm)': 'Phế Liệu (mm)',
+            'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+            'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
+        })
+        st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
+        st.dataframe(summary_df)
+
+        patterns_df = patterns_df.rename(columns={
+            'Profile Code': 'Mã Thanh',
+            'Bar Number': 'Số Thanh',
+            'Stock Length': 'Chiều Dài Thanh',
+            'Used Length': 'Chiều Dài Sử Dụng',
+            'Remaining Length': 'Chiều Dài Còn Lại',
+            'Efficiency': 'Hiệu Suất',
+            'Cutting Pattern': 'Mẫu Cắt',
+            'Pieces': 'Số Đoạn Cắt'
+        })
+        st.subheader("📋 Danh Sách Mẫu Cắt")
+        st.dataframe(patterns_df)
+
+        result_df = result_df.rename(columns={
+            'Profile Code': 'Mã Thanh',
+            'Item ID': 'Mã Mảnh',
+            'Length': 'Chiều Dài',
+            'Bar Number': 'Số Thanh'
+        })
+        st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
+        st.dataframe(result_df)
+
+        st.subheader("📊 Chi Tiết Cắt Từng Thanh")
+        selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
+        filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
+        for i, row in filtered.iterrows():
+            st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
+            cuts = row['Mẫu Cắt'].split('+')
+            df_cut = pd.DataFrame({'Đoạn Cắt (mm)': cuts})
+            st.dataframe(df_cut, use_container_width=True, height=200)
+
+        output = io.BytesIO()
+        create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
+        output.seek(0)
+        st.download_button("📥 Tải Xuống File Kết Quả Cắt Nhôm", output, "ket_qua_cat_nhom.xlsx")
 
 # Footer
 st.markdown("---")
