@@ -55,7 +55,7 @@ with tab1:
             output.seek(0)
             st.success("✅ Tổng hợp thành công!")
             
-                        summary_df = summary_df.rename(columns={
+            summary_df = summary_df.rename(columns={
                             'Profile Code': 'Mã Thanh',
                             'Total Pieces': 'Tổng Đoạn Cắt',
                             'Total Bars Used': 'Số Thanh Sử Dụng',
@@ -65,8 +65,8 @@ with tab1:
                             'Overall Efficiency': 'Hiệu Suất Tổng Thể',
                             'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
                         })
-st.dataframe(summary_df)
-                        patterns_df = patterns_df.rename(columns={
+    st.dataframe(summary_df)
+            patterns_df = patterns_df.rename(columns={
                             'Profile Code': 'Mã Thanh',
                             'Bar Number': 'Số Thanh',
                             'Stock Length': 'Chiều Dài Thanh',
