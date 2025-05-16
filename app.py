@@ -1,60 +1,16 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import io
+import time
+from utils import create_accessory_summary, validate_input_excel
+from cutting_optimizer import optimize_cutting
+from utils import create_output_excel
 
-def validate_input_excel(df):
-    required_columns = ["Profile Code", "Length", "Quantity"]
-    vietnamese_columns = {
-        "Mã Thanh": "Profile Code",
-        "Chiều Dài": "Length",
-        "Số Lượng": "Quantity"
-    }
-
-    for vn_col, en_col in vietnamese_columns.items():
-        if vn_col in df.columns:
-            df.rename(columns={vn_col: en_col}, inplace=True)
-
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        return False, f"Thiếu các cột bắt buộc: {', '.join(missing)}"
-
-    try:
-        df['Length'] = pd.to_numeric(df['Length'])
-        df['Quantity'] = pd.to_numeric(df['Quantity'])
-    except ValueError:
-        return False, "Chiều Dài và Số Lượng phải là số"
-
-    if (df['Length'] <= 0).any():
-        return False, "Chiều Dài phải > 0"
-    if (df['Quantity'] <= 0).any():
-        return False, "Số Lượng phải > 0"
-    if df['Profile Code'].isnull().any() or (df['Profile Code'] == '').any():
-        return False, "Mã Thanh không được để trống"
-    if len(df) == 0:
-        return False, "Tệp không có dữ liệu"
-
-    return True, "Tệp hợp lệ"
-
-
-def create_accessory_summary(input_df, output_stream):
-    required_cols = ['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng', 'số lượng']
-    missing = [col for col in required_cols if col not in input_df.columns]
-    if missing:
-        raise ValueError(f"Thiếu cột: {', '.join(missing)}")
-
-    grouped = input_df.groupby(['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng'])['số lượng'].sum().reset_index()
-    grouped = grouped.rename(columns={'số lượng': 'Tổng Số Lượng'})
-
-    with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
-        grouped.to_excel(writer, sheet_name="Tổng Hợp Phụ Kiện", index=False)
-
-    return grouped
-
-# Giao diện dùng chung cho cả phụ kiện và nhôm
+# Giao diện dùng chung
 st.header("📤 Tải Lên File Dữ Liệu")
 uploaded_file = st.file_uploader("Chọn File Excel (phụ kiện hoặc thanh nhôm)", type=["xlsx", "xls"])
 
-# Tabs riêng biệt cho hai loại xử lý
+# Tabs riêng biệt
 if uploaded_file:
     tab1, tab2 = st.tabs(["📦 Tính Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
 
@@ -85,9 +41,6 @@ if uploaded_file:
             else:
                 st.success("✅ Dữ liệu nhôm hợp lệ! Sẵn sàng xử lý tối ưu hóa.")
                 st.dataframe(df)
-                import time
-from cutting_optimizer import optimize_cutting
-from utils import create_output_excel
 
                 stock_length = st.number_input("Chiều Dài Tiêu Chuẩn (mm)", min_value=1000, value=6000, step=100)
                 cutting_gap = st.number_input("Khoảng Cách Cắt (mm)", min_value=1, value=10, step=1)
@@ -123,3 +76,7 @@ from utils import create_output_excel
                             st.error(f"❌ Lỗi tối ưu hóa: {opt_e}")
         except Exception as e:
             st.error(f"❌ Lỗi xử lý: {e}")
+# Footer
+st.markdown("---")
+st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
+st.markdown("Mọi thắc mắc xin liên hệ Zalo 0977 487 639")
