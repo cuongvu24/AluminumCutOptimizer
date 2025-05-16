@@ -162,7 +162,7 @@ with tab_cat_nhom:
                 yaxis=dict(visible=False),
                 showlegend=False
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key=f"plot_{bar_num}")
 
         output = io.BytesIO()
         create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
