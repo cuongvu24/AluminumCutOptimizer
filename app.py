@@ -141,10 +141,11 @@ with tab_cat_nhom:
         with container:
             for idx, row in filtered.iterrows():
                 if idx >= 3:
-                    # Chỉ hiển thị chi tiết từ thanh thứ 4 trong expander
-                    with st.expander(f\"🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm\"):\n                        display_pattern(row, cutting_gap)
+                    # Hiển thị trong expander nếu vượt quá 3 thanh
+                    with st.expander(f"🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm"):
+                        display_pattern(row, cutting_gap)
                 else:
-                    st.markdown(f\"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**\")
+                    st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
                     display_pattern(row, cutting_gap)
 
         output = io.BytesIO()
