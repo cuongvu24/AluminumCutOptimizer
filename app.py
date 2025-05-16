@@ -64,11 +64,10 @@ with tab_upload:
     st.download_button("📄 Tải mẫu cắt nhôm", out_nhom, "mau_cat_nhom.xlsx")
 
     pk_sample = pd.DataFrame({
-        'mã phụ kiện': ['PK001', 'PK002'],
-        'tên phụ phiện': ['Gioăng', 'Bulong'],
-        'đơn vị tính': ['cái', 'bộ'],
-        'mã hàng': ['NHOM1', 'NHOM2'],
-        'số lượng': [10, 20]
+        'Mã phụ kiện': ['PK001', 'PK002'],
+        'Tên phụ phiện': ['Gioăng', 'Bulong'],
+        'Tơn vị tính': ['cái', 'bộ'],
+        'Tố lượng': [10, 20]
     })
     out_pk = io.BytesIO()
     pk_sample.to_excel(out_pk, index=False)
