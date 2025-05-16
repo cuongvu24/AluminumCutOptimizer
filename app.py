@@ -6,17 +6,50 @@ import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
 from utils import create_output_excel, create_accessory_summary, validate_input_excel
 
+# Hàm hiển thị mô phỏng cắt thanh
+def display_pattern(row, cutting_gap):
+    pattern = row['Mẫu Cắt']
+    parts = pattern.split('+')
+    current_pos = 0
+    fig = go.Figure()
+
+    for i, part in enumerate(parts):
+        length = float(part)
+        color = f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)" if i > 0 else "rgba(255, 100, 100, 0.9)"
+        fig.add_shape(
+            type="rect",
+            x0=current_pos, x1=current_pos + length,
+            y0=0, y1=1,
+            line=dict(width=1),
+            fillcolor=color
+        )
+        fig.add_annotation(
+            x=current_pos + length / 2, y=0.5,
+            text=str(int(length)),
+            showarrow=False,
+            font=dict(size=10, color="white")
+        )
+        current_pos += length + cutting_gap
+
+    fig.update_layout(
+        height=100,
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(title="Chiều Dài (mm)", range=[0, row['Chiều Dài Thanh']]),
+        yaxis=dict(visible=False),
+        showlegend=False
+    )
+    st.plotly_chart(fig, use_container_width=True, key=f"plot_{row['Số Thanh']}")
+
+# Cấu hình giao diện
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
 uploaded_file = st.file_uploader("📤 Tải lên tệp Excel dữ liệu", type=["xlsx", "xls"])
-
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
 tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
 
-# TAB TẢI MẪU
 with tab_upload:
     st.subheader("📥 Tải xuống mẫu nhập liệu")
     st.markdown("""
@@ -42,7 +75,7 @@ with tab_upload:
     out_pk.seek(0)
     st.download_button("📄 Tải mẫu phụ kiện", out_pk, "mau_phu_kien.xlsx")
 
-# TAB PHỤ KIỆN
+# Tab Phụ kiện
 with tab_phu_kien:
     st.subheader("📦 Tổng Hợp Phụ Kiện")
     if uploaded_file:
@@ -57,7 +90,7 @@ with tab_phu_kien:
         except Exception as e:
             st.warning("⚠️ File không phù hợp hoặc thiếu cột cần thiết.")
 
-# TAB NHÔM
+# Tab Nhôm
 with tab_cat_nhom:
     st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
     if uploaded_file:
@@ -141,7 +174,6 @@ with tab_cat_nhom:
         with container:
             for idx, row in filtered.iterrows():
                 if idx >= 3:
-                    # Hiển thị trong expander nếu vượt quá 3 thanh
                     with st.expander(f"🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm"):
                         display_pattern(row, cutting_gap)
                 else:
@@ -152,73 +184,6 @@ with tab_cat_nhom:
         create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
         output.seek(0)
         st.download_button("📥 Tải Xuống File Kết Quả Cắt Nhôm", output, "ket_qua_cat_nhom.xlsx")
-
-# Hàm hiển thị mô phỏng cắt thanh
-def display_pattern(row, cutting_gap):
-    pattern = row['Mẫu Cắt']
-    parts = pattern.split('+')
-    current_pos = 0
-    fig = go.Figure()
-
-    for i, part in enumerate(parts):
-        length = float(part)
-        # Mảnh đầu tiên sẽ tô màu nổi bật hơn cho dễ nhận diện
-        color = f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)" if i > 0 else "rgba(255, 100, 100, 0.9)"
-        fig.add_shape(
-            type="rect",
-            x0=current_pos, x1=current_pos + length, y0=0, y1=1,
-            line=dict(width=1), fillcolor=color
-        )
-        fig.add_annotation(
-            x=current_pos + length/2, y=0.5,
-            text=str(int(length)),
-            showarrow=False,
-            font=dict(size=10, color="white")
-        )
-        current_pos += length + cutting_gap
-
-    fig.update_layout(
-        height=100,
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(title="Chiều Dài (mm)", range=[0, row['Chiều Dài Thanh']]),
-        yaxis=dict(visible=False),
-        showlegend=False
-    )
-    st.plotly_chart(fig, use_container_width=True, key=f"plot_{row['Số Thanh']}")
-    # Hàm hiển thị mô phỏng cắt thanh
-
-    def display_pattern(row, cutting_gap):
-        pattern = row['Mẫu Cắt']
-        parts = pattern.split('+')
-        current_pos = 0
-        fig = go.Figure()
-    
-        for i, part in enumerate(parts):
-            length = float(part)
-            color = f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)" if i > 0 else "rgba(255, 100, 100, 0.9)"
-            fig.add_shape(
-                type="rect",
-                x0=current_pos, x1=current_pos + length,
-                y0=0, y1=1,
-                line=dict(width=1),
-                fillcolor=color
-            )
-            fig.add_annotation(
-                x=current_pos + length / 2, y=0.5,
-                text=str(int(length)),
-                showarrow=False,
-                font=dict(size=10, color="white")
-            )
-            current_pos += length + cutting_gap
-    
-        fig.update_layout(
-            height=100,
-            margin=dict(l=10, r=10, t=10, b=10),
-            xaxis=dict(title="Chiều Dài (mm)", range=[0, row['Chiều Dài Thanh']]),
-            yaxis=dict(visible=False),
-            showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True, key=f"plot_{row['Số Thanh']}")
 
 # Footer
 st.markdown("---")
