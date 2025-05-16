@@ -54,7 +54,47 @@ with tab1:
             summary_df = create_accessory_summary(acc_df, output)
             output.seek(0)
             st.success("✅ Tổng hợp thành công!")
-            st.dataframe(summary_df)
+            
+                        summary_df = summary_df.rename(columns={
+                            'Profile Code': 'Mã Thanh',
+                            'Total Pieces': 'Tổng Đoạn Cắt',
+                            'Total Bars Used': 'Số Thanh Sử Dụng',
+                            'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+                            'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+                            'Waste (mm)': 'Phế Liệu (mm)',
+                            'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+                            'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
+                        })
+st.dataframe(summary_df)
+                        patterns_df = patterns_df.rename(columns={
+                            'Profile Code': 'Mã Thanh',
+                            'Bar Number': 'Số Thanh',
+                            'Stock Length': 'Chiều Dài Thanh',
+                            'Used Length': 'Chiều Dài Sử Dụng',
+                            'Remaining Length': 'Chiều Dài Còn Lại',
+                            'Efficiency': 'Hiệu Suất',
+                            'Cutting Pattern': 'Mẫu Cắt',
+                            'Pieces': 'Số Đoạn Cắt'
+                        })
+                        st.subheader("📋 Danh Sách Mẫu Cắt")
+                        st.dataframe(patterns_df)
+
+                        
+                        st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
+                        result_df = result_df.rename(columns={
+                            'Profile Code': 'Mã Thanh',
+                            'Item ID': 'Mã Mảnh',
+                            'Length': 'Chiều Dài',
+                            'Bar Number': 'Số Thanh'
+                        })
+                        st.dataframe(result_df)
+st.subheader("📊 Chi Tiết Cắt Từng Thanh")
+                        for i, row in patterns_df.iterrows():
+                            st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
+                            cuts = row['Mẫu Cắt'].split('+')
+                            df_cut = pd.DataFrame({'Đoạn Cắt (mm)': cuts})
+                            st.dataframe(df_cut, use_container_width=True)
+
             st.download_button(
                 "📥 Tải Xuống File Tổng Hợp Phụ Kiện",
                 output,
@@ -108,7 +148,6 @@ with tab2:
                         st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
         except Exception as e:
             st.error(f"❌ Lỗi xử lý file: {e}")
-
 
 # Footer
 st.markdown("---")
