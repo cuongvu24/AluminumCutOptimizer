@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 import io
 import time
+import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
 from utils import create_output_excel, create_accessory_summary, validate_input_excel
 
@@ -10,7 +11,6 @@ st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
 uploaded_file = st.file_uploader("📤 Tải lên tệp Excel dữ liệu", type=["xlsx", "xls"])
 
-# Khởi tạo biến lưu kết quả tối ưu để tránh tính lại khi chọn mã thanh
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
@@ -90,16 +90,12 @@ with tab_cat_nhom:
                         )
                         elapsed = time.time() - start_time
                         st.success(f"✅ Hoàn tất trong {elapsed:.2f} giây")
-
-                        # Lưu vào session
                         st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length, cutting_gap)
-
                     except Exception as opt_err:
                         st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
         except Exception as e:
             st.error(f"❌ Lỗi xử lý file: {e}")
 
-    # Hiển thị nếu có dữ liệu
     if st.session_state.result_data:
         result_df, patterns_df, summary_df, stock_length, cutting_gap = st.session_state.result_data
 
@@ -138,24 +134,35 @@ with tab_cat_nhom:
         st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
         st.dataframe(result_df)
 
-        st.subheader("📊 Chi Tiết Cắt Từng Thanh")
+        st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
         selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
         filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
-        for i, row in filtered.iterrows():
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        st.text(f"#{int(row['Số Thanh'])}")
-    with col2:
-        fig_data = []
-        cuts = row['Mẫu Cắt'].split('+')
-        current_x = 0
-        for idx, part in enumerate(cuts):
-            width = float(part)
-            fig_data.append({"x": current_x, "width": width})
-            current_x += width
 
-        chart_df = pd.DataFrame(fig_data)
-        st.bar_chart(chart_df.set_index('x')['width'])
+        for _, row in filtered.iterrows():
+            bar_num = int(row['Số Thanh'])
+            stock_len = row['Chiều Dài Thanh']
+            st.markdown(f"**🔹 #{bar_num} | {selected_profile} | {int(stock_len)}mm**")
+
+            pattern = row['Mẫu Cắt']
+            parts = pattern.split('+')
+            current_pos = 0
+            fig = go.Figure()
+
+            for i, part in enumerate(parts):
+                length = float(part)
+                fig.add_shape(type="rect", x0=current_pos, x1=current_pos + length, y0=0, y1=1,
+                              line=dict(width=1), fillcolor=f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)")
+                fig.add_annotation(x=current_pos + length/2, y=0.5, text=str(int(length)), showarrow=False, font=dict(size=10, color="white"))
+                current_pos += length + cutting_gap
+
+            fig.update_layout(
+                height=100,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis=dict(title="Chiều Dài (mm)", range=[0, stock_len]),
+                yaxis=dict(visible=False),
+                showlegend=False
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
         output = io.BytesIO()
         create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
