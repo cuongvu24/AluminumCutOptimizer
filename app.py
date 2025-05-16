@@ -76,8 +76,8 @@ with tab1:
                             'Cutting Pattern': 'Mẫu Cắt',
                             'Pieces': 'Số Đoạn Cắt'
                         })
-                        st.subheader("📋 Danh Sách Mẫu Cắt")
-                        st.dataframe(patterns_df)
+            st.subheader("📋 Danh Sách Mẫu Cắt")
+            st.dataframe(patterns_df)
 
                         
                         st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
