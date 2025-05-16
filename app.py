@@ -96,6 +96,8 @@ with tab_cat_nhom:
 
                     except Exception as opt_err:
                         st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
+        except Exception as e:
+            st.error(f"❌ Lỗi xử lý file: {e}")
 
     # Hiển thị nếu có dữ liệu
     if st.session_state.result_data:
