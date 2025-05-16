@@ -1,5 +1,6 @@
 import pandas as pd
-
+import streamlit as st
+import io
 
 def validate_input_excel(df):
     required_columns = ["Profile Code", "Length", "Quantity"]
@@ -35,25 +36,16 @@ def validate_input_excel(df):
     return True, "Tệp hợp lệ"
 
 
-def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock_length, cutting_gap):
-    summary_vi = summary_df.copy()
-    if 'Average Bar Efficiency' in summary_vi.columns:
-        summary_vi.drop(columns=['Average Bar Efficiency'], inplace=True)
-    patterns_vi = patterns_df.copy()
-    result_vi = result_df.copy()
+def create_accessory_summary(input_df, output_stream):
+    required_cols = ['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng', 'số lượng']
+    missing = [col for col in required_cols if col not in input_df.columns]
+    if missing:
+        raise ValueError(f"Thiếu cột: {', '.join(missing)}")
 
-    # Ghi file Excel
+    grouped = input_df.groupby(['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng'])['số lượng'].sum().reset_index()
+    grouped = grouped.rename(columns={'số lượng': 'Tổng Số Lượng'})
+
     with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
-        summary_vi.to_excel(writer, sheet_name='Tổng Hợp', index=False)
-        patterns_vi.to_excel(writer, sheet_name='Mẫu Cắt', index=False)
-        result_vi.to_excel(writer, sheet_name='Chi Tiết Mảnh', index=False)
+        grouped.to_excel(writer, sheet_name="Tổng Hợp Phụ Kiện", index=False)
 
-        pd.DataFrame({
-            'Tham Số': ['Chiều Dài Tiêu Chuẩn', 'Khoảng Cách Cắt'],
-            'Giá Trị': [stock_length, cutting_gap]
-        }).to_excel(writer, sheet_name='Tham Số', index=False)
-
-        # Cài đặt chiều rộng cột sơ bộ
-        for sheet in writer.sheets.values():
-            for col in sheet.columns:
-                sheet.column_dimensions[col[0].column_letter].width = 18
+    return grouped
