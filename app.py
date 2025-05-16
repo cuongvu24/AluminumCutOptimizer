@@ -141,6 +141,7 @@ with tab_cat_nhom:
             st.error(f"❌ Lỗi xử lý file: {e}")
 
 
+
 # Footer
 st.markdown("---")
 st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
