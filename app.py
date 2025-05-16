@@ -80,8 +80,8 @@ with tab1:
             st.dataframe(patterns_df)
 
                         
-                        st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
-                        result_df = result_df.rename(columns={
+            st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
+            result_df = result_df.rename(columns={
                             'Profile Code': 'Mã Thanh',
                             'Item ID': 'Mã Mảnh',
                             'Length': 'Chiều Dài',
