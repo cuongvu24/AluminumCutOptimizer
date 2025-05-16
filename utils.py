@@ -37,13 +37,13 @@ def validate_input_excel(df):
 
 
 def create_accessory_summary(input_df, output_stream):
-    required_cols = ['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng', 'số lượng']
+    required_cols = ['Mã phụ kiện', 'Tên phụ phiện', 'Đơn vị tính', 'Số lượng']
     missing = [col for col in required_cols if col not in input_df.columns]
     if missing:
         raise ValueError(f"Thiếu cột: {', '.join(missing)}")
 
-    grouped = input_df.groupby(['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng'])['số lượng'].sum().reset_index()
-    grouped = grouped.rename(columns={'số lượng': 'Tổng Số Lượng'})
+    grouped = input_df.groupby(['Mã phụ kiện', 'Tên phụ phiện', 'Đơn vị tính'])['Số lượng'].sum().reset_index()
+    grouped = grouped.rename(columns={'Số lượng': 'Tổng Số Lượng'})
 
     with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
         grouped.to_excel(writer, sheet_name="Tổng Hợp Phụ Kiện", index=False)
