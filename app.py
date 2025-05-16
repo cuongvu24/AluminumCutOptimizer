@@ -1,161 +1,125 @@
-import streamlit as st
 import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from cutting_optimizer import optimize_cutting
-from utils import validate_input_excel, create_output_excel
+import streamlit as st
 import io
-import time
 
-# Set page config
-st.set_page_config(
-    page_title="Phần Mềm Tối Ưu Cắt Nhôm",
-    page_icon="✂️",
-    layout="wide"
-)
+def validate_input_excel(df):
+    required_columns = ["Profile Code", "Length", "Quantity"]
+    vietnamese_columns = {
+        "Mã Thanh": "Profile Code",
+        "Chiều Dài": "Length",
+        "Số Lượng": "Quantity"
+    }
 
-# Sidebar layout
-with st.sidebar:
-    st.title("✂️ Phần mềm tối ưu cắt nhôm")
-    stock_length = st.number_input("Chiều Dài Tiêu Chuẩn (mm)", min_value=1000, value=6000, step=100)
-    cutting_gap = st.number_input("Khoảng Cách Cắt (mm)", min_value=1, value=10, step=1)
-    optimization_method = st.selectbox("Phương Pháp Tối Ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
-    optimization_options = st.radio("Tùy Chọn Tối Ưu Kích Thước Thanh", [
-        "Sử Dụng Chiều Dài Cố Định",
-        "Tối Ưu Trong Các Giá Trị Cố Định",
-        "Tối Ưu Trong Khoảng Giá Trị"
-    ])
+    for vn_col, en_col in vietnamese_columns.items():
+        if vn_col in df.columns:
+            df.rename(columns={vn_col: en_col}, inplace=True)
 
-    if optimization_options == "Tối Ưu Trong Khoảng Giá Trị":
-        st.markdown("---")
-        st.markdown("**Cấu Hình Khoảng Tối Ưu**")
-        min_len = st.number_input("Chiều Dài Tối Thiểu (mm)", min_value=1000, max_value=10000, value=5500, step=100)
-        max_len = st.number_input("Chiều Dài Tối Đa (mm)", min_value=min_len, max_value=20000, value=6500, step=100)
-        step_len = st.number_input("Bước Tăng Kích Thước (mm)", min_value=100, value=100, step=100)
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        return False, f"Thiếu các cột bắt buộc: {', '.join(missing)}"
 
-        stock_length_options = list(range(min_len, max_len + 1, step_len))
-        optimize_stock_length = True
-    elif optimization_options == "Tối Ưu Trong Các Giá Trị Cố Định":
-        st.markdown("---")
-        st.markdown("**Nhập Danh Sách Kích Thước Cố Định (mm)**")
-        custom_lengths_text = st.text_area(
-            "Nhập các kích thước, cách nhau bằng dấu phẩy hoặc xuống dòng:",
-            value="3000, 4000, 5000, 5500, 6000, 6500"
-        )
-
-        if "," in custom_lengths_text:
-            custom_lengths_raw = custom_lengths_text.split(",")
-        else:
-            custom_lengths_raw = custom_lengths_text.splitlines()
-
-        stock_length_options = []
-        for val in custom_lengths_raw:
-            val = val.strip()
-            if val.isdigit():
-                stock_length_options.append(int(val))
-
-        if not stock_length_options:
-            st.warning("⚠️ Danh sách kích thước không hợp lệ. Sử dụng mặc định: 6000mm")
-            stock_length_options = [6000]
-
-        optimize_stock_length = True
-        optimize_stock_length = True
-        st.markdown(f"✅ Danh sách kích thước đã nhập: `{', '.join(map(str, stock_length_options))}`")
-    else:
-        stock_length_options = [stock_length]
-        optimize_stock_length = False
-
-st.title("✂️ Phần Mềm Tối Ưu Cắt Nhôm")
-st.markdown("[📦 Xem mã nguồn trên GitHub](https://github.com/hero9xhn/AluminumCutOptimizer)")
-st.markdown("""
-Phần mềm này giúp tối ưu hóa các mẫu cắt nhôm để giảm thiểu lãng phí. Tải lên file Excel
-với thông tin các thanh nhôm và kích thước, và nhận kế hoạch cắt tối ưu với số liệu chi tiết.
-""")
-
-# Hướng dẫn
-with st.expander("📖 Hướng Dẫn Nhập Dữ Liệu", expanded=False):
-    st.markdown("""
-    File Excel của bạn nên chứa các cột sau:
-    1. **Mã Thanh** - Mã/model của thanh nhôm
-    2. **Chiều Dài** - Chiều dài yêu cầu của mỗi thanh (mm)
-    3. **Số Lượng** - Số lượng cần thiết cho mỗi thanh
-
-    Bạn có thể tải biểu mẫu mẫu ở cuối trang.
-    """)
-
-# Nội dung xử lý chính sẽ đặt ở giữa layout
-uploaded_file = st.file_uploader("📤 Tải Lên File Excel Đầu Vào", type=["xlsx", "xls"])
-
-if uploaded_file:
     try:
-        input_data = pd.read_excel(uploaded_file)
-        valid, message = validate_input_excel(input_data)
+        df['Length'] = pd.to_numeric(df['Length'])
+        df['Quantity'] = pd.to_numeric(df['Quantity'])
+    except ValueError:
+        return False, "Chiều Dài và Số Lượng phải là số"
 
-        if not valid:
-            st.error(message)
-        else:
-            st.success("✅ Dữ liệu hợp lệ! Đang tối ưu hóa...")
+    if (df['Length'] <= 0).any():
+        return False, "Chiều Dài phải > 0"
+    if (df['Quantity'] <= 0).any():
+        return False, "Số Lượng phải > 0"
+    if df['Profile Code'].isnull().any() or (df['Profile Code'] == '').any():
+        return False, "Mã Thanh không được để trống"
+    if len(df) == 0:
+        return False, "Tệp không có dữ liệu"
 
-            with st.spinner("🔄 Đang xử lý dữ liệu..."):
-                start_time = time.time()
-                result_df, patterns_df, summary_df = optimize_cutting(
-                    input_data,
-                    stock_length=stock_length,
-                    cutting_gap=cutting_gap,
-                    optimization_method=optimization_method,
-                    stock_length_options=stock_length_options,
-                    optimize_stock_length=optimize_stock_length
-                )
-                end_time = time.time()
+    return True, "Tệp hợp lệ"
 
-            st.success(f"🎉 Tối ưu hóa hoàn tất sau {end_time - start_time:.2f} giây")
-            st.subheader("📊 Bảng tổng hợp hiệu suất")
 
-            # Tính toán hiệu suất nếu chưa có sẵn
-            if 'Efficiency' not in summary_df.columns:
-                try:
-                    summary_df['Efficiency'] = summary_df['Total Length Needed (mm)'] / summary_df['Total Stock Length (mm)']
-                    summary_df['Efficiency'] = summary_df['Efficiency'].fillna(0).apply(lambda x: f"{x*100:.2f}%")
-                except Exception as eff_err:
-                    st.warning(f"⚠️ Không thể tính hiệu suất: {eff_err}")
-                    
-            if 'Average Bar Efficiency' in summary_df.columns:
-                summary_df.drop(columns=['Average Bar Efficiency'], inplace=True)
+def create_accessory_summary(input_df, output_stream):
+    required_cols = ['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng', 'số lượng']
+    missing = [col for col in required_cols if col not in input_df.columns]
+    if missing:
+        raise ValueError(f"Thiếu cột: {', '.join(missing)}")
 
-            summary_df = summary_df.rename(columns={
-    'Profile Code': 'Mã Thanh',
-    'Total Pieces': 'Tổng Số Đoạn',
-    'Total Bars Used': 'Tổng Thanh Sử Dụng',
-    'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-    'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-    'Waste (mm)': 'Phế Liệu (mm)',
-    'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-    'Efficiency': 'Hiệu Suất (%)'
-})
-            st.dataframe(summary_df)
-            st.subheader("📋 Danh sách mẫu cắt chi tiết")
-            patterns_df = patterns_df.rename(columns={
-    'Profile Code': 'Mã Thanh',
-    'Bar Number': 'Số Thanh',
-    'Stock Length': 'Chiều Dài Thanh',
-    'Used Length': 'Chiều Dài Sử Dụng',
-    'Remaining Length': 'Chiều Dài Còn Lại',
-    'Efficiency': 'Hiệu Suất',
-    'Cutting Pattern': 'Mẫu Cắt',
-    'Pieces': 'Số Đoạn Cắt'
-})
-            st.dataframe(patterns_df)
+    grouped = input_df.groupby(['mã phụ kiện', 'tên phụ phiện', 'đơn vị tính', 'mã hàng'])['số lượng'].sum().reset_index()
+    grouped = grouped.rename(columns={'số lượng': 'Tổng Số Lượng'})
 
-            st.subheader("📥 Tải kết quả về máy")
+    with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
+        grouped.to_excel(writer, sheet_name="Tổng Hợp Phụ Kiện", index=False)
+
+    return grouped
+
+# Giao diện dùng chung cho cả phụ kiện và nhôm
+st.header("📤 Tải Lên File Dữ Liệu")
+uploaded_file = st.file_uploader("Chọn File Excel (phụ kiện hoặc thanh nhôm)", type=["xlsx", "xls"])
+
+# Tabs riêng biệt cho hai loại xử lý
+if uploaded_file:
+    tab1, tab2 = st.tabs(["📦 Tính Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
+
+    with tab1:
+        try:
+            acc_df = pd.read_excel(uploaded_file)
+            st.success("✅ File hợp lệ, đang tổng hợp phụ kiện...")
             output = io.BytesIO()
-            create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
+            summary_df = create_accessory_summary(acc_df, output)
             output.seek(0)
-            st.download_button("📥 Tải xuống bảng Excel kết quả", output, "ket_qua_toi_uu.xlsx")
+            st.subheader("📋 Bảng Tổng Hợp Phụ Kiện")
+            st.dataframe(summary_df)
+            st.download_button(
+                label="📥 Tải Xuống File Tổng Hợp Phụ Kiện",
+                data=output,
+                file_name="tong_hop_phu_kien.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        except Exception as e:
+            st.warning("Không phải file phụ kiện hoặc thiếu cột phù hợp.")
 
-    except Exception as e:
-        st.error(f"❌ Lỗi xử lý: {e}")
+    with tab2:
+        try:
+            df = pd.read_excel(uploaded_file)
+            valid, message = validate_input_excel(df)
+            if not valid:
+                st.error(message)
+            else:
+                st.success("✅ Dữ liệu nhôm hợp lệ! Sẵn sàng xử lý tối ưu hóa.")
+                st.dataframe(df)
+                import time
+from cutting_optimizer import optimize_cutting
+from utils import create_output_excel
 
-# Footer
-st.markdown("---")
-st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
-st.markdown("Mọi thắc mắc xin liên hệ Zalo 0977 487 639")
+                stock_length = st.number_input("Chiều Dài Tiêu Chuẩn (mm)", min_value=1000, value=6000, step=100)
+                cutting_gap = st.number_input("Khoảng Cách Cắt (mm)", min_value=1, value=10, step=1)
+                optimization_method = st.selectbox("Phương Pháp Tối Ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
+                length_options_text = st.text_input("Nhập các kích thước thanh có thể dùng (cách nhau bởi dấu phẩy)", "5800, 6000, 6200, 6500")
+
+                if st.button("🚀 Bắt đầu tối ưu hóa"):
+                    with st.spinner("🔄 Đang tối ưu hóa..."):
+                        try:
+                            stock_length_options = [int(x.strip()) for x in length_options_text.split(",") if x.strip().isdigit()]
+                            start_time = time.time()
+                            result_df, patterns_df, summary_df = optimize_cutting(
+                                df,
+                                stock_length=stock_length,
+                                cutting_gap=cutting_gap,
+                                optimization_method=optimization_method,
+                                stock_length_options=stock_length_options,
+                                optimize_stock_length=True
+                            )
+                            end_time = time.time()
+                            st.success(f"✅ Tối ưu hoàn tất sau {end_time - start_time:.2f} giây")
+                            st.dataframe(summary_df)
+                            output = io.BytesIO()
+                            create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
+                            output.seek(0)
+                            st.download_button(
+                                label="📥 Tải Xuống Kết Quả Cắt Nhôm",
+                                data=output,
+                                file_name="ket_qua_cat_nhom.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                        except Exception as opt_e:
+                            st.error(f"❌ Lỗi tối ưu hóa: {opt_e}")
+        except Exception as e:
+            st.error(f"❌ Lỗi xử lý: {e}")
