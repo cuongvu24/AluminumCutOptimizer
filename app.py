@@ -86,7 +86,6 @@ with tab_cat_nhom:
                         elapsed = time.time() - start_time
                         st.success(f"✅ Hoàn tất trong {elapsed:.2f} giây")
 
-                        # Rename summary
                         summary_df = summary_df.rename(columns={
                             'Profile Code': 'Mã Thanh',
                             'Total Pieces': 'Tổng Đoạn Cắt',
@@ -123,11 +122,14 @@ with tab_cat_nhom:
                         st.dataframe(result_df)
 
                         st.subheader("📊 Chi Tiết Cắt Từng Thanh")
-                        for i, row in patterns_df.iterrows():
-                            st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
-                            cuts = row['Mẫu Cắt'].split('+')
-                            df_cut = pd.DataFrame({'Đoạn Cắt (mm)': cuts})
-                            st.dataframe(df_cut, use_container_width=True)
+                        selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
+                        with st.expander("👁️ Hiển thị chi tiết từng thanh"):
+                            filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
+                            for i, row in filtered.iterrows():
+                                st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
+                                cuts = row['Mẫu Cắt'].split('+')
+                                df_cut = pd.DataFrame({'Đoạn Cắt (mm)': cuts})
+                                st.dataframe(df_cut, use_container_width=True)
 
                         output = io.BytesIO()
                         create_output_excel(output, result_df, patterns_df, summary_df, stock_length, cutting_gap)
@@ -137,6 +139,7 @@ with tab_cat_nhom:
                         st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
         except Exception as e:
             st.error(f"❌ Lỗi xử lý file: {e}")
+
 # Footer
 st.markdown("---")
 st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
