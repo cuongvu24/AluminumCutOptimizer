@@ -49,3 +49,22 @@ def create_accessory_summary(input_df, output_stream):
         grouped.to_excel(writer, sheet_name="Tổng Hợp Phụ Kiện", index=False)
 
     return grouped
+
+def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock_length, cutting_gap):
+    """
+    Xuất kết quả tối ưu cắt ra file Excel với các sheet:
+    - Tổng Hợp
+    - Mẫu Cắt
+    - Chi Tiết Mảnh
+    - Tham Số
+    """
+    with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
+        summary_df.to_excel(writer, sheet_name="Tổng Hợp", index=False)
+        patterns_df.to_excel(writer, sheet_name="Mẫu Cắt", index=False)
+        result_df.to_excel(writer, sheet_name="Chi Tiết Mảnh", index=False)
+
+        params_df = pd.DataFrame({
+            'Tham Số': ['Chiều Dài Tiêu Chuẩn', 'Khoảng Cách Cắt'],
+            'Giá Trị': [stock_length, cutting_gap]
+        })
+        params_df.to_excel(writer, sheet_name="Tham Số", index=False)
