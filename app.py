@@ -158,4 +158,4 @@ if uploaded_file:
 # Footer
 st.markdown("---")
 st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
-st.markdown("Mọi thắc mắc xin liên hệ 0977 487 639")
+st.markdown("Mọi thắc mắc xin liên hệ Zalo 0977 487 639")
