@@ -65,7 +65,7 @@ with tab1:
                             'Overall Efficiency': 'Hiệu Suất Tổng Thể',
                             'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
                         })
-    st.dataframe(summary_df)
+            st.dataframe(summary_df)
             patterns_df = patterns_df.rename(columns={
                             'Profile Code': 'Mã Thanh',
                             'Bar Number': 'Số Thanh',
