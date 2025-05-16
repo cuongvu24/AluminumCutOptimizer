@@ -186,5 +186,5 @@ with tab_cat_nhom:
 
 # Footer
 st.markdown("---")
-st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
 st.markdown("Mọi thắc mắc xin liên hệ Zalo 0977 487 639")
+st.markdown("Ứng dụng hỗ trợ sản xuất cửa © 2025")
