@@ -87,8 +87,8 @@ with tab1:
                             'Length': 'Chiều Dài',
                             'Bar Number': 'Số Thanh'
                         })
-                        st.dataframe(result_df)
-st.subheader("📊 Chi Tiết Cắt Từng Thanh")
+            st.dataframe(result_df)
+            st.subheader("📊 Chi Tiết Cắt Từng Thanh")
                         for i, row in patterns_df.iterrows():
                             st.markdown(f"**🔹 Thanh #{int(row['Số Thanh'])} | Mã: {row['Mã Thanh']} | Dài: {row['Chiều Dài Thanh']}mm**")
                             cuts = row['Mẫu Cắt'].split('+')
