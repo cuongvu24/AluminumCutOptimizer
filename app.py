@@ -2,15 +2,12 @@ import streamlit as st
 import pandas as pd
 import io
 import time
-from utils import create_accessory_summary, validate_input_excel
 from cutting_optimizer import optimize_cutting
-from utils import create_output_excel
+from utils import create_output_excel, create_accessory_summary, validate_input_excel
 
-# Giao diện dùng chung
 st.header("📤 Tải Lên File Dữ Liệu")
 uploaded_file = st.file_uploader("Chọn File Excel (phụ kiện hoặc thanh nhôm)", type=["xlsx", "xls"])
 
-# Tabs riêng biệt
 if uploaded_file:
     tab1, tab2 = st.tabs(["📦 Tính Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
 
@@ -76,6 +73,7 @@ if uploaded_file:
                             st.error(f"❌ Lỗi tối ưu hóa: {opt_e}")
         except Exception as e:
             st.error(f"❌ Lỗi xử lý: {e}")
+
 # Footer
 st.markdown("---")
 st.markdown("Phần Mềm Tối Ưu Cắt Nhôm © 2025 By Cường Vũ")
