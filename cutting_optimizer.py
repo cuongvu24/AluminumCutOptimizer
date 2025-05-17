@@ -49,9 +49,9 @@ def create_accessory_summary(input_df, output_stream):
 def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options, optimize_stock_length):
     """
     Hàm tối ưu hóa cắt nhôm, hỗ trợ ba chế độ tối ưu:
-    - "Tối Ưu Hiệu Suất Cao Nhất": Chọn một kích thước thanh tốt nhất để tối ưu hiệu suất.
-    - "Tối Ưu Số Lượng Thanh": Chọn một kích thước thanh tốt nhất để tối ưu số lượng thanh.
-    - "Tối Ưu Linh Hoạt": Sử dụng nhiều kích thước thanh để giảm phế liệu.
+    - "Tối Ưu Hiệu Suất Cao Nhất": Chọn một kích thước thanh tốt nhất cho từng mã nhôm để tối ưu hiệu suất.
+    - "Tối Ưu Số Lượng Thanh": Chọn một kích thước thanh tốt nhất cho từng mã nhôm để tối ưu số lượng thanh.
+    - "Tối Ưu Linh Hoạt": Sử dụng nhiều kích thước thanh để giảm phế liệu cho từng mã nhôm.
     
     Tham số:
     - df: DataFrame chứa dữ liệu đầu vào (Mã Thanh, Chiều Dài, Số Lượng, [Mã Cửa])
@@ -102,39 +102,42 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         stock_lengths_used = []  # Lưu kích thước thanh được sử dụng cho từng thanh
 
         if optimization_method == "Tối Ưu Linh Hoạt":
-            # Chế độ linh hoạt: Sử dụng nhiều kích thước thanh
+            # Chế độ linh hoạt: Sử dụng nhiều kích thước thanh cho mỗi mã nhôm
             for length in lengths:
-                added = False
+                best_fit = None
+                best_remaining = float('inf')
+                best_pattern_idx = -1
+                best_stock_length = None
+
                 # Thử gán vào các thanh hiện có
-                for i, remaining in enumerate(remaining_lengths):
+                for i, (pattern, remaining) in enumerate(zip(patterns, remaining_lengths)):
                     if length <= remaining - cutting_gap:
-                        patterns[i].append(length)
-                        remaining_lengths[i] -= (length + cutting_gap)
-                        added = True
-                        break
-
-                # Nếu không gán được vào thanh hiện có, tạo thanh mới
-                if not added:
-                    best_remaining = float('inf')
-                    best_pattern = None
-                    best_stock_length = None
-
-                    # Thử từng kích thước thanh có sẵn
-                    for stock_length in stock_length_options:
-                        temp_pattern = [length]
-                        temp_remaining = stock_length - length - cutting_gap
-
-                        # Chọn kích thước thanh sao cho phế liệu nhỏ nhất
+                        temp_remaining = remaining - (length + cutting_gap)
                         if temp_remaining < best_remaining:
                             best_remaining = temp_remaining
-                            best_pattern = temp_pattern
-                            best_stock_length = stock_length
+                            best_pattern_idx = i
 
-                    patterns.append(best_pattern)
+                # Thử tạo thanh mới với tất cả kích thước thanh
+                for stock_length in stock_length_options:
+                    temp_remaining = stock_length - length - cutting_gap
+                    if temp_remaining >= 0 and temp_remaining < best_remaining:
+                        best_remaining = temp_remaining
+                        best_fit = [length]
+                        best_stock_length = stock_length
+                        best_pattern_idx = -1  # Đánh dấu để tạo thanh mới
+
+                # Gán mảnh cắt vào thanh
+                if best_pattern_idx >= 0:
+                    # Gán vào thanh hiện có
+                    patterns[best_pattern_idx].append(length)
+                    remaining_lengths[best_pattern_idx] = best_remaining
+                else:
+                    # Tạo thanh mới
+                    patterns.append(best_fit)
                     remaining_lengths.append(best_remaining)
                     stock_lengths_used.append(best_stock_length)
         else:
-            # Chế độ cũ: Chọn một kích thước thanh tốt nhất cho toàn bộ mã nhôm
+            # Chế độ cũ: Chọn một kích thước thanh tốt nhất cho mã nhôm hiện tại
             best_patterns = []
             best_remaining_lengths = []
             best_stock_length = stock_length_options[0]
@@ -179,7 +182,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
 
             patterns = best_patterns
             remaining_lengths = best_remaining_lengths
-            # Với chế độ cũ, tất cả thanh sử dụng cùng một kích thước
+            # Với chế độ cũ, tất cả thanh của mã nhôm này sử dụng cùng một kích thước
             stock_lengths_used = [best_stock_length] * len(patterns)
 
         # Tạo dữ liệu mẫu cắt
