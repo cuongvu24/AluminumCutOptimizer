@@ -63,53 +63,62 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
         patterns_df.to_excel(writer, sheet_name="Mẫu Cắt", index=False)
         result_df.to_excel(writer, sheet_name="Chi Tiết Mảnh", index=False)
 
-        # Tạo sheet "Mô Phỏng Cắt"
-        if not patterns_df.empty:
-            ws = writer.book.create_sheet("Mô Phỏng Cắt")
+        # Tạo sheet "Mô Phỏng Cắt Từng Thanh"
+        try:
+            ws = writer.book.create_sheet("Mô Phỏng Cắt Từng Thanh")
 
-            # Sắp xếp patterns_df theo cột 'Mã Thanh' (vì cột 'Profile Code' đã được đổi tên trong app.py)
-            patterns_df = patterns_df.sort_values('Mã Thanh')
+            # Kiểm tra nếu patterns_df không rỗng
+            if not patterns_df.empty:
+                # Sắp xếp patterns_df theo cột 'Mã Thanh' (vì cột 'Profile Code' đã được đổi tên trong app.py)
+                patterns_df = patterns_df.sort_values('Mã Thanh')
 
-            # Xác định số đoạn cắt tối đa trong bất kỳ mẫu cắt nào
-            max_pieces = patterns_df['Cutting Pattern'].apply(lambda x: len(x.split('+'))).max()
+                # Xác định số đoạn cắt tối đa trong bất kỳ mẫu cắt nào
+                if 'Mẫu Cắt' in patterns_df.columns:
+                    max_pieces = patterns_df['Mẫu Cắt'].apply(lambda x: len(x.split('+'))).max()
+                else:
+                    max_pieces = 0
 
-            # Danh sách màu HEX cho các đoạn cắt
-            piece_colors = ["FF9999", "99FF99", "9999FF", "FFFF99", "FF99FF", "99FFFF"]
+                # Danh sách màu HEX cho các đoạn cắt
+                piece_colors = ["FF9999", "99FF99", "9999FF", "FFFF99", "FF99FF", "99FFFF"]
 
-            # Các cột gốc (loại bỏ 'Cutting Pattern')
-            original_columns = [col for col in patterns_df.columns if col != 'Cutting Pattern']
+                # Các cột gốc (loại bỏ 'Mẫu Cắt' nếu có)
+                original_columns = [col for col in patterns_df.columns if col != 'Mẫu Cắt']
 
-            # Các cột cho từng đoạn cắt
-            piece_columns = [f"Piece {i+1}" for i in range(max_pieces)]
+                # Các cột cho từng đoạn cắt
+                piece_columns = [f"Piece {i+1}" for i in range(max_pieces)] if max_pieces > 0 else []
 
-            # Ghi tiêu đề cho sheet "Mô Phỏng Cắt"
-            headers = original_columns + piece_columns
-            for col_num, header in enumerate(headers, 1):
-                ws.cell(row=1, column=col_num, value=header)
+                # Ghi tiêu đề cho sheet "Mô Phỏng Cắt Từng Thanh"
+                headers = original_columns + piece_columns
+                for col_num, header in enumerate(headers, 1):
+                    ws.cell(row=1, column=col_num, value=header)
 
-            # Chỉ số cột trong patterns_df
-            column_indices = {col: i for i, col in enumerate(patterns_df.columns)}
+                # Chỉ số cột trong patterns_df
+                column_indices = {col: i for i, col in enumerate(patterns_df.columns)}
 
-            # Ghi dữ liệu vào sheet
-            for row_num, row in enumerate(patterns_df.itertuples(index=False), 2):
-                # Ghi các cột gốc
-                for col_num, col in enumerate(original_columns, 1):
-                    value = row[column_indices[col]]
-                    ws.cell(row=row_num, column=col_num, value=value)
+                # Ghi dữ liệu vào sheet
+                for row_num, row in enumerate(patterns_df.itertuples(index=False), 2):
+                    # Ghi các cột gốc
+                    for col_num, col in enumerate(original_columns, 1):
+                        value = row[column_indices[col]]
+                        ws.cell(row=row_num, column=col_num, value=value)
 
-                # Tách mẫu cắt và ghi từng đoạn
-                pieces = row[column_indices['Cutting Pattern']].split('+')
-                for piece_num, piece in enumerate(pieces):
-                    col_num = len(original_columns) + piece_num + 1
-                    cell = ws.cell(row=row_num, column=col_num, value=float(piece))
-                    # Áp dụng màu nền
-                    color = piece_colors[piece_num % len(piece_colors)]
-                    fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
-                    cell.fill = fill
-        else:
-            # Nếu patterns_df rỗng, ghi một thông báo vào sheet
-            ws = writer.book.create_sheet("Mô Phỏng Cắt")
-            ws.cell(row=1, column=1, value="Không có dữ liệu để mô phỏng cắt.")
+                    # Tách mẫu cắt và ghi từng đoạn nếu có cột Mẫu Cắt
+                    if 'Mẫu Cắt' in patterns_df.columns:
+                        pieces = row[column_indices['Mẫu Cắt']].split('+')
+                        for piece_num, piece in enumerate(pieces):
+                            col_num = len(original_columns) + piece_num + 1
+                            cell = ws.cell(row=row_num, column=col_num, value=float(piece))
+                            # Áp dụng màu nền
+                            color = piece_colors[piece_num % len(piece_colors)]
+                            fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
+                            cell.fill = fill
+            else:
+                # Nếu patterns_df rỗng, ghi một thông báo vào sheet
+                ws.cell(row=1, column=1, value="Không có dữ liệu để mô phỏng cắt.")
+        except Exception as e:
+            # Nếu có lỗi, ghi thông báo lỗi vào sheet
+            ws = writer.book.create_sheet("Mô Phỏng Cắt Từng Thanh")
+            ws.cell(row=1, column=1, value=f"Lỗi khi tạo sheet: {str(e)}")
 
         # Sheet Tham Số
         params_df = pd.DataFrame({
