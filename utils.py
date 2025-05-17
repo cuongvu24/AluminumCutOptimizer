@@ -53,6 +53,22 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
         patterns_df.to_excel(writer, sheet_name="Mẫu Cắt", index=False)
         result_df.to_excel(writer, sheet_name="Chi Tiết Mảnh", index=False)
 
+        # Lấy workbook và các sheet để định dạng
+        workbook = writer.book
+        summary_sheet = workbook["Tổng Hợp"]
+        patterns_sheet = workbook["Mẫu Cắt"]
+
+        # Định dạng các cột hiệu suất thành phần trăm
+        for row in summary_sheet.iter_rows(min_row=2, max_row=summary_sheet.max_row):
+            for cell in row:
+                if cell.column_letter in ['G', 'H']:  # Cột Hiệu Suất Tổng Thể và Hiệu Suất Trung Bình
+                    cell.number_format = '0.0%'
+
+        for row in patterns_sheet.iter_rows(min_row=2, max_row=patterns_sheet.max_row):
+            for cell in row:
+                if cell.column_letter == 'F':  # Cột Hiệu Suất
+                    cell.number_format = '0.0%'
+
         # Tạo sheet "Mô Phỏng Cắt Từng Thanh"
         try:
             ws = writer.book.create_sheet("Mô Phỏng Cắt Từng Thanh")
@@ -92,7 +108,9 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
                         value = row[column_indices[col]]
                         if isinstance(value, float):
                             # Nếu là số thập phân, làm tròn đến 1 chữ số thập phân
-                            if value % 1 != 0:  # Kiểm tra nếu không phải số nguyên
+                            if col in ['Hiệu Suất']:
+                                ws.cell(row=row_num, column=col_num, value=value).number_format = '0.0%'
+                            elif value % 1 != 0:  # Các cột khác
                                 value = round(value, 1)
                                 ws.cell(row=row_num, column=col_num, value=value).number_format = '0.0'
                             else:
