@@ -3,14 +3,12 @@ import numpy as np
 import pulp as pl
 import itertools
 
+def optimize_cutting(input_data, cutting_gap, optimization_method="Tối Ưu Hiệu Suất Cao Nhất", stock_length_options=None, optimize_stock_length=False):
+    # Kiểm tra danh sách kích thước thanh
+    if stock_length_options is None or not stock_length_options:
+        raise ValueError("Vui lòng cung cấp ít nhất một kích thước thanh.")
 
-def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method="Tối Ưu Hiệu Suất Cao Nhất", stock_length_options=None, optimize_stock_length=False):
-    """
-    Optimizes aluminum cutting patterns to minimize waste.
-    """
-    if stock_length_options is None:
-        stock_length_options = [stock_length]
-
+    # Mở rộng dữ liệu theo số lượng
     expanded_data = []
     for _, row in input_data.iterrows():
         for i in range(int(row['Quantity'])):
@@ -29,14 +27,15 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
     for profile_code in profile_codes:
         profile_data = expanded_df[expanded_df['Profile Code'] == profile_code].copy()
         lengths = profile_data['Length'].values
-        lengths = np.sort(lengths)[::-1]
+        lengths = np.sort(lengths)[::-1]  # Sắp xếp giảm dần
 
         best_patterns = []
         best_remaining_lengths = []
-        best_stock_length = stock_length
+        best_stock_length = None
         best_efficiency = 0
         best_bar_count = float('inf')
 
+        # Thử từng kích thước thanh có sẵn
         for current_stock_length in stock_length_options:
             patterns = []
             remaining_lengths = []
@@ -57,6 +56,7 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
             total_stock_length = current_stock_length * len(patterns)
             current_efficiency = total_used_length / total_stock_length if total_stock_length > 0 else 0
 
+            # Chọn phương pháp tối ưu
             if optimization_method == "Tối Ưu Hiệu Suất Cao Nhất":
                 if current_efficiency > best_efficiency:
                     best_patterns = patterns
@@ -64,7 +64,7 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
                     best_stock_length = current_stock_length
                     best_efficiency = current_efficiency
                     best_bar_count = len(patterns)
-            else:
+            else:  # Tối Ưu Số Lượng Thanh
                 if len(patterns) < best_bar_count or (len(patterns) == best_bar_count and current_efficiency > best_efficiency):
                     best_patterns = patterns
                     best_remaining_lengths = remaining_lengths
@@ -76,6 +76,7 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
         remaining_lengths = best_remaining_lengths
         current_stock_length = best_stock_length
 
+        # Tạo dữ liệu mẫu cắt
         pattern_data = []
         bar_number = 1
 
@@ -93,6 +94,7 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
                 'Pieces': len(pattern)
             })
 
+            # Gán mảnh cắt vào thanh
             for length in pattern:
                 unassigned_items = profile_data[(profile_data['Length'] == length) &
                     (~profile_data['Item ID'].isin([r.get('Item ID') for r in all_results]))]
@@ -109,6 +111,7 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
 
         all_patterns.extend(pattern_data)
 
+        # Tạo dữ liệu tổng hợp
         total_bars = len(patterns)
         total_length_needed = sum(lengths)
         total_length_used = sum(pattern['Stock Length'] for pattern in pattern_data)
@@ -125,10 +128,12 @@ def optimize_cutting(input_data, stock_length, cutting_gap, optimization_method=
             'Average Bar Efficiency': avg_efficiency
         })
 
+    # Tạo DataFrame kết quả
     patterns_df = pd.DataFrame(all_patterns)
     summary_df = pd.DataFrame(all_summaries)
     result_df = pd.DataFrame(all_results)
 
+    # Sắp xếp và định dạng
     if not patterns_df.empty:
         patterns_df = patterns_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
         patterns_df['Efficiency'] = patterns_df['Efficiency'].round(4)
