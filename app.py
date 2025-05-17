@@ -123,7 +123,8 @@ with tab_cat_nhom:
                     cutting_gap = st.number_input("Khoảng cách cắt (mm)", 1, 100, 10, 1)
 
                 with col3:
-                    optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
+                    # Thêm tùy chọn "Tối Ưu Linh Hoạt"
+                    optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt"])
 
                 # Nút tối ưu hóa
                 if st.button("🚀 Tối Ưu Hóa"):
