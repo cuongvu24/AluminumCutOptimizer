@@ -61,7 +61,7 @@ with tab_upload:
     - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (không bắt buộc)
     - **Mẫu Phụ Kiện** gồm các cột: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
     """)
-    # Dữ liệu mẫu cho cắt nhôm (giữ nguyên cột tiếng Việt)
+    # Dữ liệu mẫu cho cắt nhôm (giữ cột tiếng Việt)
     nhom_sample = pd.DataFrame({
         'Mã Thanh': ['TNG1', 'TNG2', 'TNG3', 'TNG4'],
         'Chiều Dài': [2000, 1500, 3000, 2500],
