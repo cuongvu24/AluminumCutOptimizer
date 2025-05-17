@@ -136,7 +136,7 @@ with tab_cat_nhom:
                                 optimize_stock_length=True
                             )
                             elapsed = time.time() - start_time
-                            st.success(f"✅ Hoàn tất trong {elapsed:.2f} giây")
+                            st.success(f"✅ Hoàn tất trong {elapsed:.1f} giây")
                             st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
                         except Exception as opt_err:
                             st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
@@ -147,7 +147,7 @@ with tab_cat_nhom:
     if st.session_state.result_data:
         result_df, patterns_df, summary_df, stock_length_options, cutting_gap = st.session_state.result_data
 
-        # Đổi tên cột cho bảng tổng hợp
+        # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân
         summary_df = summary_df.rename(columns={
             'Profile Code': 'Mã Thanh',
             'Total Pieces': 'Tổng Đoạn Cắt',
@@ -159,9 +159,14 @@ with tab_cat_nhom:
             'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
         })
         st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
-        st.dataframe(summary_df)
+        # Định dạng số thập phân trong bảng hiển thị
+        summary_df_display = summary_df.style.format({
+            'Hiệu Suất Tổng Thể': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+            'Hiệu Suất Trung Bình': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+        })
+        st.dataframe(summary_df_display)
 
-        # Đổi tên cột cho bảng mẫu cắt
+        # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân
         patterns_df = patterns_df.rename(columns={
             'Profile Code': 'Mã Thanh',
             'Bar Number': 'Số Thanh',
@@ -173,7 +178,11 @@ with tab_cat_nhom:
             'Pieces': 'Số Đoạn Cắt'
         })
         st.subheader("📋 Danh Sách Mẫu Cắt")
-        st.dataframe(patterns_df)
+        # Định dạng số thập phân trong bảng hiển thị
+        patterns_df_display = patterns_df.style.format({
+            'Hiệu Suất': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+        })
+        st.dataframe(patterns_df_display)
 
         # Đổi tên cột cho bảng chi tiết mảnh cắt
         result_df = result_df.rename(columns={
