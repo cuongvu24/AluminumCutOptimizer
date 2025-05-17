@@ -58,7 +58,7 @@ def create_accessory_summary(input_df, output_stream):
 
 def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options, optimize_stock_length):
     """
-    Hàm tối ưu hóa cắt nhôm (ví dụ đơn giản).
+    Hàm tối ưu hóa cắt nhôm (triển khai thực tế).
     
     Tham số:
     - df: DataFrame chứa dữ liệu đầu vào (Profile Code, Length, Quantity)
@@ -72,32 +72,147 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     - patterns_df: DataFrame mẫu cắt
     - summary_df: DataFrame tổng hợp
     """
-    # Giả lập patterns_df (mẫu cắt)
-    patterns_df = pd.DataFrame({
-        'Profile Code': df['Profile Code'],
-        'Bar Number': [1] * len(df),
-        'Stock Length': [stock_length_options[0]] * len(df),
-        'Used Length': df['Length'],
-        'Remaining Length': [stock_length_options[0] - x for x in df['Length']],
-        'Efficiency': [0.9] * len(df),
-        'Cutting Pattern': [str(x) for x in df['Length']],
-        'Pieces': [1] * len(df)
-    })
+    # Kiểm tra danh sách kích thước thanh
+    if stock_length_options is None or not stock_length_options:
+        raise ValueError("Vui lòng cung cấp ít nhất một kích thước thanh.")
 
-    # Giả lập summary_df (tổng hợp)
-    summary_df = pd.DataFrame({
-        'Profile Code': df['Profile Code'].unique(),
-        'Total Pieces': [len(df)] * len(df['Profile Code'].unique()),
-        'Total Bars Used': [1] * len(df['Profile Code'].unique()),
-        'Total Length Needed (mm)': [df['Length'].sum()] * len(df['Profile Code'].unique()),
-        'Total Stock Length (mm)': [stock_length_options[0]] * len(df['Profile Code'].unique()),
-        'Waste (mm)': [stock_length_options[0] - df['Length'].sum()] * len(df['Profile Code'].unique()),
-        'Overall Efficiency': [0.9] * len(df['Profile Code'].unique()),
-        'Average Bar Efficiency': [0.9] * len(df['Profile Code'].unique())
-    })
+    # Mở rộng dữ liệu theo số lượng
+    expanded_data = []
+    for idx, row in df.iterrows():
+        for i in range(int(row['Quantity'])):
+            expanded_data.append({
+                'Profile Code': row['Profile Code'],
+                'Length': row['Length'],
+                'Item ID': f"{row['Profile Code']}_{i+1}"
+            })
+    expanded_df = pd.DataFrame(expanded_data)
 
-    # Giả lập result_df (chi tiết mảnh cắt)
-    result_df = df.copy()
+    profile_codes = expanded_df['Profile Code'].unique()
+    all_patterns = []
+    all_summaries = []
+    all_results = []
+
+    for profile_code in profile_codes:
+        profile_data = expanded_df[expanded_df['Profile Code'] == profile_code].copy()
+        lengths = profile_data['Length'].values
+        lengths = sorted(lengths, reverse=True)  # Sắp xếp giảm dần
+
+        best_patterns = []
+        best_remaining_lengths = []
+        best_stock_length = stock_length_options[0]
+        best_efficiency = 0
+        best_bar_count = float('inf')
+
+        # Thử từng kích thước thanh có sẵn
+        for current_stock_length in stock_length_options:
+            patterns = []
+            remaining_lengths = []
+
+            for length in lengths:
+                added = False
+                for i, remaining in enumerate(remaining_lengths):
+                    if length <= remaining - cutting_gap:
+                        patterns[i].append(length)
+                        remaining_lengths[i] -= (length + cutting_gap)
+                        added = True
+                        break
+                if not added:
+                    patterns.append([length])
+                    remaining_lengths.append(current_stock_length - length - cutting_gap)
+
+            total_used_length = sum(sum(pattern) for pattern in patterns)
+            total_stock_length = current_stock_length * len(patterns)
+            current_efficiency = total_used_length / total_stock_length if total_stock_length > 0 else 0
+
+            if optimization_method == "Tối Ưu Hiệu Suất Cao Nhất":
+                if current_efficiency > best_efficiency:
+                    best_patterns = patterns
+                    best_remaining_lengths = remaining_lengths
+                    best_stock_length = current_stock_length
+                    best_efficiency = current_efficiency
+                    best_bar_count = len(patterns)
+            else:  # Tối Ưu Số Lượng Thanh
+                if len(patterns) < best_bar_count or (len(patterns) == best_bar_count and current_efficiency > best_efficiency):
+                    best_patterns = patterns
+                    best_remaining_lengths = remaining_lengths
+                    best_stock_length = current_stock_length
+                    best_efficiency = current_efficiency
+                    best_bar_count = len(patterns)
+
+        patterns = best_patterns
+        remaining_lengths = best_remaining_lengths
+        current_stock_length = best_stock_length
+
+        # Tạo dữ liệu mẫu cắt
+        pattern_data = []
+        bar_number = 1
+
+        for pattern, remaining in zip(patterns, remaining_lengths):
+            used_length = sum(pattern)
+            efficiency = used_length / current_stock_length if current_stock_length > 0 else 0
+            pattern_data.append({
+                'Profile Code': profile_code,
+                'Bar Number': bar_number,
+                'Stock Length': current_stock_length,
+                'Used Length': used_length,
+                'Remaining Length': remaining,
+                'Efficiency': efficiency,
+                'Cutting Pattern': '+'.join(map(str, pattern)),
+                'Pieces': len(pattern)
+            })
+
+            # Gán mảnh cắt vào thanh
+            for length in pattern:
+                unassigned_items = profile_data[(profile_data['Length'] == length) &
+                                               (~profile_data['Item ID'].isin([r.get('Item ID') for r in all_results]))]
+                if not unassigned_items.empty:
+                    item_idx = unassigned_items.index[0]
+                    all_results.append({
+                        'Profile Code': profile_code,
+                        'Item ID': profile_data.loc[item_idx, 'Item ID'],
+                        'Length': length,
+                        'Bar Number': bar_number
+                    })
+                    profile_data = profile_data.drop(item_idx)
+
+            bar_number += 1
+
+        all_patterns.extend(pattern_data)
+
+        # Tạo dữ liệu tổng hợp
+        total_bars = len(patterns)
+        total_length_needed = sum(lengths)
+        total_length_used = sum(pattern['Stock Length'] for pattern in pattern_data)
+        avg_efficiency = sum(p['Efficiency'] for p in pattern_data) / len(pattern_data) if pattern_data else 0
+
+        all_summaries.append({
+            'Profile Code': profile_code,
+            'Total Pieces': len(lengths),
+            'Total Bars Used': total_bars,
+            'Total Length Needed (mm)': total_length_needed,
+            'Total Stock Length (mm)': total_length_used,
+            'Waste (mm)': total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap,
+            'Overall Efficiency': total_length_needed / total_length_used if total_length_used > 0 else 0,
+            'Average Bar Efficiency': avg_efficiency
+        })
+
+    # Tạo DataFrame kết quả
+    patterns_df = pd.DataFrame(all_patterns)
+    summary_df = pd.DataFrame(all_summaries)
+    result_df = pd.DataFrame(all_results)
+
+    # Sắp xếp và định dạng
+    if not patterns_df.empty:
+        patterns_df = patterns_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
+        patterns_df['Efficiency'] = patterns_df['Efficiency'].round(4)
+
+    if not summary_df.empty:
+        summary_df = summary_df.sort_values('Profile Code').reset_index(drop=True)
+        summary_df['Overall Efficiency'] = summary_df['Overall Efficiency'].round(4)
+        summary_df['Average Bar Efficiency'] = summary_df['Average Bar Efficiency'].round(4)
+
+    if not result_df.empty:
+        result_df = result_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
 
     return result_df, patterns_df, summary_df
 
