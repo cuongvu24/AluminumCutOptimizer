@@ -26,7 +26,7 @@ def display_pattern(row, cutting_gap):
         )
         fig.add_annotation(
             x=current_pos + length / 2, y=0.5,
-            text=str(int(length)),
+            text=str(int(length)) if length % 1 == 0 else f"{length:.1f}",
             showarrow=False,
             font=dict(size=10, color="white")
         )
@@ -136,7 +136,7 @@ with tab_cat_nhom:
                                 optimize_stock_length=True
                             )
                             elapsed = time.time() - start_time
-                            st.success(f"✅ Hoàn tất trong {elapsed:.1f} giây")
+                            st.success(f"✅ Hoàn tất trong {elapsed:.1f if elapsed % 1 != 0 else int(elapsed)} giây")
                             st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
                         except Exception as opt_err:
                             st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
@@ -162,7 +162,8 @@ with tab_cat_nhom:
         # Định dạng số thập phân trong bảng hiển thị
         summary_df_display = summary_df.style.format({
             'Hiệu Suất Tổng Thể': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-            'Hiệu Suất Trung Bình': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+            'Hiệu Suất Trung Bình': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+            'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
         })
         st.dataframe(summary_df_display)
 
@@ -180,7 +181,9 @@ with tab_cat_nhom:
         st.subheader("📋 Danh Sách Mẫu Cắt")
         # Định dạng số thập phân trong bảng hiển thị
         patterns_df_display = patterns_df.style.format({
-            'Hiệu Suất': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+            'Hiệu Suất': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+            'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+            'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
         })
         st.dataframe(patterns_df_display)
 
