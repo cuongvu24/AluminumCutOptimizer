@@ -5,7 +5,6 @@ import time
 import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
 from utils import create_output_excel, create_accessory_summary, validate_input_excel
-import uuid
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
@@ -39,9 +38,7 @@ def display_pattern(row, cutting_gap):
         yaxis=dict(visible=False),
         showlegend=False
     )
-    
-    unique_key = f"plot_{row['Số Thanh']}_{uuid.uuid4()}"
-    st.plotly_chart(fig, use_container_width=True, key=unique_key)
+    st.plotly_chart(fig, use_container_width=True, key=f"plot_{row['Số Thanh']}")
 
 # Cấu hình giao diện
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
