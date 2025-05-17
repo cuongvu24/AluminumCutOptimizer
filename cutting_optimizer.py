@@ -199,7 +199,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 'Chiều Dài Thanh': stock_length,
                 'Chiều Dài Sử Dụng': used_length,
                 'Chiều Dài Còn Lại': remaining,
-                'Hiệu Suất': efficiency,
+                'Hiệu Suất': efficiency * 100,  # Chuyển đổi hiệu suất thành phần trăm
                 'Mẫu Cắt': '+'.join(map(str, pattern_rounded)),
                 'Số Đoạn Cắt': len(pattern)
             })
@@ -240,8 +240,8 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
             'Tổng Chiều Dài Cần (mm)': total_length_needed,
             'Tổng Chiều Dài Nguyên Liệu (mm)': total_length_used,
             'Phế Liệu (mm)': waste,
-            'Hiệu Suất Tổng Thể': total_length_needed / total_length_used if total_length_used > 0 else 0,
-            'Hiệu Suất Trung Bình': avg_efficiency
+            'Hiệu Suất Tổng Thể': (total_length_needed / total_length_used if total_length_used > 0 else 0) * 100,  # Chuyển đổi thành phần trăm
+            'Hiệu Suất Trung Bình': avg_efficiency  # Đã nhân 100 ở pattern_data
         })
 
     # Tạo DataFrame kết quả
@@ -252,12 +252,12 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     # Sắp xếp và định dạng
     if not patterns_df.empty:
         patterns_df = patterns_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
-        patterns_df['Hiệu Suất'] = patterns_df['Hiệu Suất'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        # Định dạng số thập phân cho các cột khác
+        patterns_df['Chiều Dài Sử Dụng'] = patterns_df['Chiều Dài Sử Dụng'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        patterns_df['Chiều Dài Còn Lại'] = patterns_df['Chiều Dài Còn Lại'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not summary_df.empty:
         summary_df = summary_df.sort_values('Mã Thanh').reset_index(drop=True)
-        summary_df['Hiệu Suất Tổng Thể'] = summary_df['Hiệu Suất Tổng Thể'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
-        summary_df['Hiệu Suất Trung Bình'] = summary_df['Hiệu Suất Trung Bình'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
         summary_df['Phế Liệu (mm)'] = summary_df['Phế Liệu (mm)'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not result_df.empty:
