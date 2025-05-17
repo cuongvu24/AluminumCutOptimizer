@@ -5,17 +5,7 @@ import openpyxl
 from openpyxl.styles import PatternFill
 
 def validate_input_excel(df):
-    required_columns = ["Profile Code", "Length", "Quantity"]
-    vietnamese_columns = {
-        "Mã Thanh": "Profile Code",
-        "Chiều Dài": "Length",
-        "Số Lượng": "Quantity"
-    }
-
-    # Đổi tên cột từ tiếng Việt sang tiếng Anh nếu cần
-    for vn_col, en_col in vietnamese_columns.items():
-        if vn_col in df.columns:
-            df.rename(columns={vn_col: en_col}, inplace=True)
+    required_columns = ["Mã Thanh", "Chiều Dài", "Số Lượng"]
 
     # Kiểm tra các cột bắt buộc
     missing = [col for col in required_columns if col not in df.columns]
@@ -24,16 +14,16 @@ def validate_input_excel(df):
 
     # Kiểm tra dữ liệu
     try:
-        df['Length'] = pd.to_numeric(df['Length'])
-        df['Quantity'] = pd.to_numeric(df['Quantity'])
+        df['Chiều Dài'] = pd.to_numeric(df['Chiều Dài'])
+        df['Số Lượng'] = pd.to_numeric(df['Số Lượng'])
     except ValueError:
         return False, "Chiều Dài và Số Lượng phải là số"
 
-    if (df['Length'] <= 0).any():
+    if (df['Chiều Dài'] <= 0).any():
         return False, "Chiều Dài phải > 0"
-    if (df['Quantity'] <= 0).any():
+    if (df['Số Lượng'] <= 0).any():
         return False, "Số Lượng phải > 0"
-    if df['Profile Code'].isnull().any() or (df['Profile Code'] == '').any():
+    if df['Mã Thanh'].isnull().any() or (df['Mã Thanh'] == '').any():
         return False, "Mã Thanh không được để trống"
     if len(df) == 0:
         return False, "Tệp không có dữ liệu"
@@ -69,7 +59,7 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
 
             # Kiểm tra nếu patterns_df không rỗng
             if not patterns_df.empty:
-                # Sắp xếp patterns_df theo cột 'Mã Thanh' (vì cột 'Profile Code' đã được đổi tên trong app.py)
+                # Sắp xếp patterns_df theo cột 'Mã Thanh'
                 patterns_df = patterns_df.sort_values('Mã Thanh')
 
                 # Xác định số đoạn cắt tối đa trong bất kỳ mẫu cắt nào
