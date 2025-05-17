@@ -4,7 +4,7 @@ import io
 import time
 import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
-from utils import create_output_excel, create_accessory_summary, validate_input_excel
+from W utils import create_output_excel, create_accessory_summary, validate_input_excel
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
@@ -34,7 +34,7 @@ def display_pattern(row, cutting_gap):
     fig.update_layout(
         height=100,
         margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(title="Chiều Dài (mm)", range=[0, row['Chiều Dài Thanh']]),
+        xaxis=dict(title="", range=[0, row['Chiều Dài Thanh']]),  # Đặt title thành chuỗi rỗng
         yaxis=dict(visible=False),
         showlegend=False
     )
@@ -187,15 +187,38 @@ with tab_cat_nhom:
         selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
         filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
 
-        container = st.container()
-        with container:
-            for idx, row in filtered.iterrows():
-                if idx >= 3:
-                    with st.expander(f"🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm"):
-                        display_pattern(row, cutting_gap)
-                else:
-                    st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
-                    display_pattern(row, cutting_gap)
+        # Khởi tạo biến page trong session_state nếu chưa có
+        if 'page' not in st.session_state:
+            st.session_state.page = 0
+
+        # Thiết lập số dòng mỗi trang
+        rows_per_page = 5
+        total_rows = len(filtered)
+        num_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+        # Tính chỉ số bắt đầu và kết thúc của dòng hiển thị
+        start_idx = st.session_state.page * rows_per_page
+        end_idx = start_idx + rows_per_page
+        display_rows = filtered.iloc[start_idx:end_idx]
+
+        # Hiển thị các dòng mô phỏng
+        for idx, row in display_rows.iterrows():
+            st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
+            display_pattern(row, cutting_gap)
+
+        # Thêm nút điều hướng
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.session_state.page > 0:
+                if st.button("Trang trước"):
+                    st.session_state.page -= 1
+        with col2:
+            if st.session_state.page < num_pages - 1:
+                if st.button("Trang sau"):
+                    st.session_state.page += 1
+
+        # (Tùy chọn) Hiển thị thông tin trang
+        st.info(f"Đang hiển thị trang {st.session_state.page + 1}/{num_pages}")
 
         # Tải xuống kết quả
         output = io.BytesIO()
