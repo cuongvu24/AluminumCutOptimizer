@@ -56,10 +56,18 @@ tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📁 Tải Mẫu Nhập", "�
 # Tab Tải Mẫu Nhập
 with tab_upload:
     st.subheader("📥 Tải xuống mẫu nhập liệu")
+    # Thêm phần giới thiệu và giải thích chức năng
     st.markdown("""
-    👉 Vui lòng sử dụng các mẫu bên dưới để đảm bảo định dạng chính xác khi nhập liệu:
-    - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (không bắt buộc)
-    - **Mẫu Phụ Kiện** gồm các cột: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
+    ### Giới thiệu
+    Tab **Tải Mẫu Nhập** cung cấp các mẫu nhập liệu chuẩn để bạn sử dụng trong việc tối ưu hóa cắt nhôm và tổng hợp phụ kiện. Các mẫu này được thiết kế với định dạng cố định, giúp đảm bảo dữ liệu đầu vào chính xác và phù hợp với yêu cầu của phần mềm.
+
+    ### Hướng dẫn sử dụng
+    - **Mẫu Cắt Nhôm**: Dùng để nhập dữ liệu cắt nhôm, bao gồm các cột `Mã Thanh`, `Chiều Dài`, `Số Lượng`, và `Mã Cửa` (không bắt buộc). Mẫu này phù hợp để chuẩn bị dữ liệu cho tab **Tối Ưu Cắt Nhôm**.
+    - **Mẫu Phụ Kiện**: Dùng để nhập danh sách phụ kiện, bao gồm các cột `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, và `Số lượng`. Mẫu này được sử dụng trong tab **Tổng Hợp Phụ Kiện**.
+    - **Cách sử dụng**:
+      1. Nhấn vào nút **Tải mẫu cắt nhôm** hoặc **Tải mẫu phụ kiện** để tải file mẫu về máy.
+      2. Mở file mẫu bằng phần mềm Excel, nhập dữ liệu theo đúng định dạng cột.
+      3. Lưu file và tải lên ứng dụng ở các tab tương ứng để xử lý.
     """)
     # Dữ liệu mẫu cho cắt nhôm (giữ cột tiếng Việt)
     nhom_sample = pd.DataFrame({
@@ -123,7 +131,6 @@ with tab_cat_nhom:
                     cutting_gap = st.number_input("Khoảng cách cắt (mm)", 1, 100, 10, 1)
 
                 with col3:
-                    # Thêm tùy chọn "Tối Ưu Linh Hoạt"
                     optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt"])
 
                 # Nút tối ưu hóa
@@ -156,27 +163,27 @@ with tab_cat_nhom:
     if st.session_state.result_data:
         result_df, patterns_df, summary_df, stock_length_options, cutting_gap = st.session_state.result_data
 
-        # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân (không cần rename vì đã giữ tên tiếng Việt)
+        # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân
         st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
-        # Định dạng số thập phân trong bảng hiển thị
+        # Định dạng số thập phân trong bảng hiển thị, hiệu suất dưới dạng phần trăm
         summary_df_display = summary_df.style.format({
-            'Hiệu Suất Tổng Thể': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-            'Hiệu Suất Trung Bình': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+            'Hiệu Suất Tổng Thể': "{:.1f}%",
+            'Hiệu Suất Trung Bình': "{:.1f}%",
             'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
         })
         st.dataframe(summary_df_display)
 
-        # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân (không cần rename vì đã giữ tên tiếng Việt)
+        # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân
         st.subheader("📋 Danh Sách Mẫu Cắt")
-        # Định dạng số thập phân trong bảng hiển thị
+        # Định dạng số thập phân trong bảng hiển thị, hiệu suất dưới dạng phần trăm
         patterns_df_display = patterns_df.style.format({
-            'Hiệu Suất': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+            'Hiệu Suất': "{:.1f}%",
             'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
             'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
         })
         st.dataframe(patterns_df_display)
 
-        # Đổi tên cột cho bảng chi tiết mảnh cắt (chỉ đổi một số cột nội bộ, giữ các cột đầu vào tiếng Việt)
+        # Đổi tên cột cho bảng chi tiết mảnh cắt
         result_df = result_df.rename(columns={
             'Item ID': 'Mã Mảnh',
             'Bar Number': 'Số Thanh'
