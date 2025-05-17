@@ -5,17 +5,7 @@ import openpyxl
 from openpyxl.styles import PatternFill
 
 def validate_input_excel(df):
-    required_columns = ["Profile Code", "Length", "Quantity"]
-    vietnamese_columns = {
-        "Mã Thanh": "Profile Code",
-        "Chiều Dài": "Length",
-        "Số Lượng": "Quantity"
-    }
-
-    # Đổi tên cột từ tiếng Việt sang tiếng Anh nếu cần
-    for vn_col, en_col in vietnamese_columns.items():
-        if vn_col in df.columns:
-            df.rename(columns={vn_col: en_col}, inplace=True)
+    required_columns = ["Mã Thanh", "Chiều Dài", "Số Lượng"]
 
     # Kiểm tra các cột bắt buộc
     missing = [col for col in required_columns if col not in df.columns]
@@ -24,16 +14,16 @@ def validate_input_excel(df):
 
     # Kiểm tra dữ liệu
     try:
-        df['Length'] = pd.to_numeric(df['Length'])
-        df['Quantity'] = pd.to_numeric(df['Quantity'])
+        df['Chiều Dài'] = pd.to_numeric(df['Chiều Dài'])
+        df['Số Lượng'] = pd.to_numeric(df['Số Lượng'])
     except ValueError:
         return False, "Chiều Dài và Số Lượng phải là số"
 
-    if (df['Length'] <= 0).any():
+    if (df['Chiều Dài'] <= 0).any():
         return False, "Chiều Dài phải > 0"
-    if (df['Quantity'] <= 0).any():
+    if (df['Số Lượng'] <= 0).any():
         return False, "Số Lượng phải > 0"
-    if df['Profile Code'].isnull().any() or (df['Profile Code'] == '').any():
+    if df['Mã Thanh'].isnull().any() or (df['Mã Thanh'] == '').any():
         return False, "Mã Thanh không được để trống"
     if len(df) == 0:
         return False, "Tệp không có dữ liệu"
@@ -61,14 +51,14 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     Hàm tối ưu hóa cắt nhôm (triển khai thực tế).
     
     Tham số:
-    - df: DataFrame chứa dữ liệu đầu vào (Profile Code, Length, Quantity)
+    - df: DataFrame chứa dữ liệu đầu vào (Mã Thanh, Chiều Dài, Số Lượng, [Mã Cửa])
     - cutting_gap: Khoảng cách cắt (mm)
     - optimization_method: Phương pháp tối ưu ("Tối Ưu Hiệu Suất Cao Nhất" hoặc "Tối Ưu Số Lượng Thanh")
     - stock_length_options: Danh sách kích thước thanh có sẵn (mm)
     - optimize_stock_length: Có tối ưu hóa kích thước thanh hay không
     
     Trả về:
-    - result_df: DataFrame chi tiết mảnh cắt
+    - result_df: DataFrame chi tiết mảnh cắt (bao gồm cột Mã Cửa)
     - patterns_df: DataFrame mẫu cắt
     - summary_df: DataFrame tổng hợp
     """
@@ -76,25 +66,32 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     if stock_length_options is None or not stock_length_options:
         raise ValueError("Vui lòng cung cấp ít nhất một kích thước thanh.")
 
+    # Kiểm tra xem cột "Mã Cửa" có tồn tại trong df không
+    has_door_code = "Mã Cửa" in df.columns
+
     # Mở rộng dữ liệu theo số lượng
     expanded_data = []
     for idx, row in df.iterrows():
-        for i in range(int(row['Quantity'])):
-            expanded_data.append({
-                'Profile Code': row['Profile Code'],
-                'Length': row['Length'],
-                'Item ID': f"{row['Profile Code']}_{i+1}"
-            })
+        for i in range(int(row['Số Lượng'])):
+            item = {
+                'Mã Thanh': row['Mã Thanh'],
+                'Chiều Dài': row['Chiều Dài'],
+                'Item ID': f"{row['Mã Thanh']}_{i+1}"
+            }
+            # Thêm cột "Mã Cửa" nếu có
+            if has_door_code:
+                item['Mã Cửa'] = row['Mã Cửa']
+            expanded_data.append(item)
     expanded_df = pd.DataFrame(expanded_data)
 
-    profile_codes = expanded_df['Profile Code'].unique()
+    profile_codes = expanded_df['Mã Thanh'].unique()
     all_patterns = []
     all_summaries = []
     all_results = []
 
     for profile_code in profile_codes:
-        profile_data = expanded_df[expanded_df['Profile Code'] == profile_code].copy()
-        lengths = profile_data['Length'].values
+        profile_data = expanded_df[expanded_df['Mã Thanh'] == profile_code].copy()
+        lengths = profile_data['Chiều Dài'].values
         lengths = sorted(lengths, reverse=True)  # Sắp xếp giảm dần
 
         best_patterns = []
@@ -153,28 +150,32 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
             # Làm tròn các số trong pattern trước khi tạo chuỗi Cutting Pattern
             pattern_rounded = [round(x, 1) if x % 1 != 0 else int(x) for x in pattern]
             pattern_data.append({
-                'Profile Code': profile_code,
-                'Bar Number': bar_number,
-                'Stock Length': current_stock_length,
-                'Used Length': used_length,
-                'Remaining Length': remaining,
-                'Efficiency': efficiency,
-                'Cutting Pattern': '+'.join(map(str, pattern_rounded)),
-                'Pieces': len(pattern)
+                'Mã Thanh': profile_code,
+                'Số Thanh': bar_number,
+                'Chiều Dài Thanh': current_stock_length,
+                'Chiều Dài Sử Dụng': used_length,
+                'Chiều Dài Còn Lại': remaining,
+                'Hiệu Suất': efficiency,
+                'Mẫu Cắt': '+'.join(map(str, pattern_rounded)),
+                'Số Đoạn Cắt': len(pattern)
             })
 
             # Gán mảnh cắt vào thanh
             for length in pattern:
-                unassigned_items = profile_data[(profile_data['Length'] == length) &
+                unassigned_items = profile_data[(profile_data['Chiều Dài'] == length) &
                                                (~profile_data['Item ID'].isin([r.get('Item ID') for r in all_results]))]
                 if not unassigned_items.empty:
                     item_idx = unassigned_items.index[0]
-                    all_results.append({
-                        'Profile Code': profile_code,
+                    result_item = {
+                        'Mã Thanh': profile_code,
                         'Item ID': profile_data.loc[item_idx, 'Item ID'],
-                        'Length': length,
-                        'Bar Number': bar_number
-                    })
+                        'Chiều Dài': length,
+                        'Số Thanh': bar_number
+                    }
+                    # Thêm cột "Mã Cửa" nếu có
+                    if has_door_code:
+                        result_item['Mã Cửa'] = profile_data.loc[item_idx, 'Mã Cửa']
+                    all_results.append(result_item)
                     profile_data = profile_data.drop(item_idx)
 
             bar_number += 1
@@ -184,19 +185,19 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         # Tạo dữ liệu tổng hợp
         total_bars = len(patterns)
         total_length_needed = sum(lengths)
-        total_length_used = sum(pattern['Stock Length'] for pattern in pattern_data)
-        avg_efficiency = sum(p['Efficiency'] for p in pattern_data) / len(pattern_data) if pattern_data else 0
+        total_length_used = sum(pattern['Chiều Dài Thanh'] for pattern in pattern_data)
+        avg_efficiency = sum(p['Hiệu Suất'] for p in pattern_data) / len(pattern_data) if pattern_data else 0
         waste = total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap
 
         all_summaries.append({
-            'Profile Code': profile_code,
-            'Total Pieces': len(lengths),
-            'Total Bars Used': total_bars,
-            'Total Length Needed (mm)': total_length_needed,
-            'Total Stock Length (mm)': total_length_used,
-            'Waste (mm)': waste,
-            'Overall Efficiency': total_length_needed / total_length_used if total_length_used > 0 else 0,
-            'Average Bar Efficiency': avg_efficiency
+            'Mã Thanh': profile_code,
+            'Tổng Đoạn Cắt': len(lengths),
+            'Số Thanh Sử Dụng': total_bars,
+            'Tổng Chiều Dài Cần (mm)': total_length_needed,
+            'Tổng Chiều Dài Nguyên Liệu (mm)': total_length_used,
+            'Phế Liệu (mm)': waste,
+            'Hiệu Suất Tổng Thể': total_length_needed / total_length_used if total_length_used > 0 else 0,
+            'Hiệu Suất Trung Bình': avg_efficiency
         })
 
     # Tạo DataFrame kết quả
@@ -206,16 +207,16 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
 
     # Sắp xếp và định dạng
     if not patterns_df.empty:
-        patterns_df = patterns_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
-        patterns_df['Efficiency'] = patterns_df['Efficiency'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        patterns_df = patterns_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
+        patterns_df['Hiệu Suất'] = patterns_df['Hiệu Suất'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not summary_df.empty:
-        summary_df = summary_df.sort_values('Profile Code').reset_index(drop=True)
-        summary_df['Overall Efficiency'] = summary_df['Overall Efficiency'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
-        summary_df['Average Bar Efficiency'] = summary_df['Average Bar Efficiency'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
-        summary_df['Waste (mm)'] = summary_df['Waste (mm)'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        summary_df = summary_df.sort_values('Mã Thanh').reset_index(drop=True)
+        summary_df['Hiệu Suất Tổng Thể'] = summary_df['Hiệu Suất Tổng Thể'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        summary_df['Hiệu Suất Trung Bình'] = summary_df['Hiệu Suất Trung Bình'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        summary_df['Phế Liệu (mm)'] = summary_df['Phế Liệu (mm)'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not result_df.empty:
-        result_df = result_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
+        result_df = result_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
 
     return result_df, patterns_df, summary_df
