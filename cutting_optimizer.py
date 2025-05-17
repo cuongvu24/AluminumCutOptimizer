@@ -1,6 +1,6 @@
 import pandas as pd
-import streamlit as st  # Giữ lại để tương thích nếu cần
-import io  # Giữ lại để tương thích nếu cần
+import streamlit as st
+import io
 import openpyxl
 from openpyxl.styles import PatternFill
 
@@ -75,29 +75,29 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     # Giả lập patterns_df (mẫu cắt)
     patterns_df = pd.DataFrame({
         'Profile Code': df['Profile Code'],
-        'Bar Number': [1] * len(df),  # Giả định mỗi mã thanh chỉ dùng 1 thanh
-        'Stock Length': [stock_length_options[0]] * len(df),  # Sử dụng kích thước thanh đầu tiên
-        'Used Length': df['Length'],  # Chiều dài đã sử dụng
-        'Remaining Length': [stock_length_options[0] - x for x in df['Length']],  # Chiều dài còn lại
-        'Efficiency': [0.9] * len(df),  # Hiệu suất giả lập
-        'Cutting Pattern': [str(x) for x in df['Length']],  # Mẫu cắt giả lập
-        'Pieces': [1] * len(df)  # Số đoạn cắt giả lập
+        'Bar Number': [1] * len(df),
+        'Stock Length': [stock_length_options[0]] * len(df),
+        'Used Length': df['Length'],
+        'Remaining Length': [stock_length_options[0] - x for x in df['Length']],
+        'Efficiency': [0.9] * len(df),
+        'Cutting Pattern': [str(x) for x in df['Length']],
+        'Pieces': [1] * len(df)
     })
 
     # Giả lập summary_df (tổng hợp)
     summary_df = pd.DataFrame({
         'Profile Code': df['Profile Code'].unique(),
-        'Total Pieces': [len(df)] * len(df['Profile Code'].unique()),  # Tổng số đoạn cắt
-        'Total Bars Used': [1] * len(df['Profile Code'].unique()),  # Tổng số thanh sử dụng
-        'Total Length Needed (mm)': [df['Length'].sum()] * len(df['Profile Code'].unique()),  # Tổng chiều dài cần
-        'Total Stock Length (mm)': [stock_length_options[0]] * len(df['Profile Code'].unique()),  # Tổng chiều dài nguyên liệu
-        'Waste (mm)': [stock_length_options[0] - df['Length'].sum()] * len(df['Profile Code'].unique()),  # Phế liệu
-        'Overall Efficiency': [0.9] * len(df['Profile Code'].unique()),  # Hiệu suất tổng thể
-        'Average Bar Efficiency': [0.9] * len(df['Profile Code'].unique())  # Hiệu suất trung bình
+        'Total Pieces': [len(df)] * len(df['Profile Code'].unique()),
+        'Total Bars Used': [1] * len(df['Profile Code'].unique()),
+        'Total Length Needed (mm)': [df['Length'].sum()] * len(df['Profile Code'].unique()),
+        'Total Stock Length (mm)': [stock_length_options[0]] * len(df['Profile Code'].unique()),
+        'Waste (mm)': [stock_length_options[0] - df['Length'].sum()] * len(df['Profile Code'].unique()),
+        'Overall Efficiency': [0.9] * len(df['Profile Code'].unique()),
+        'Average Bar Efficiency': [0.9] * len(df['Profile Code'].unique())
     })
 
     # Giả lập result_df (chi tiết mảnh cắt)
-    result_df = df.copy()  # Sao chép DataFrame đầu vào
+    result_df = df.copy()
 
     return result_df, patterns_df, summary_df
 
