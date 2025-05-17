@@ -47,6 +47,25 @@ def display_pattern(row, cutting_gap):
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
+# Thêm phần giới thiệu và giải thích chức năng của ứng dụng
+st.markdown("""
+### Giới thiệu
+**Phần mềm Hỗ Trợ Sản Xuất Cửa** là một công cụ được thiết kế để hỗ trợ các nhà sản xuất cửa nhôm tối ưu hóa quy trình sản xuất. Ứng dụng giúp người dùng chuẩn bị dữ liệu, tổng hợp phụ kiện, và tối ưu hóa việc cắt nhôm, nhằm giảm thiểu phế liệu và tăng hiệu quả sản xuất.
+
+### Chức năng chính
+Ứng dụng bao gồm ba tab chính với các chức năng sau:
+
+- **📁 Tải Mẫu Nhập**: Cung cấp các mẫu nhập liệu chuẩn (mẫu cắt nhôm và mẫu phụ kiện) để người dùng tải về và nhập dữ liệu theo định dạng yêu cầu. Các mẫu này giúp đảm bảo dữ liệu đầu vào chính xác trước khi xử lý.
+  
+- **📦 Tổng Hợp Phụ Kiện**: Cho phép người dùng tải lên danh sách phụ kiện và tổng hợp số lượng theo từng loại. Kết quả sẽ được hiển thị và có thể tải về dưới dạng file Excel, giúp dễ dàng quản lý phụ kiện cần thiết cho sản xuất.
+
+- **✂️ Tối Ưu Cắt Nhôm**: Hỗ trợ tối ưu hóa việc cắt nhôm với ba chế độ:
+  - **Tối Ưu Hiệu Suất Cao Nhất**: Chọn kích thước thanh tốt nhất để tối đa hóa hiệu suất sử dụng nguyên liệu.
+  - **Tối Ưu Số Lượng Thanh**: Chọn kích thước thanh để sử dụng ít thanh nhất.
+  - **Tối Ưu Linh Hoạt**: Sử dụng nhiều kích thước thanh khác nhau để giảm thiểu phế liệu.
+  Kết quả bao gồm bảng tổng hợp, danh sách mẫu cắt, chi tiết mảnh cắt, và mô phỏng cắt từng thanh, cùng với file Excel để tải về.
+""")
+
 uploaded_file = st.file_uploader("📤 Tải lên tệp Excel dữ liệu", type=["xlsx", "xls"])
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
@@ -56,18 +75,10 @@ tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📁 Tải Mẫu Nhập", "�
 # Tab Tải Mẫu Nhập
 with tab_upload:
     st.subheader("📥 Tải xuống mẫu nhập liệu")
-    # Thêm phần giới thiệu và giải thích chức năng
     st.markdown("""
-    ### Giới thiệu
-    Tab **Tải Mẫu Nhập** cung cấp các mẫu nhập liệu chuẩn để bạn sử dụng trong việc tối ưu hóa cắt nhôm và tổng hợp phụ kiện. Các mẫu này được thiết kế với định dạng cố định, giúp đảm bảo dữ liệu đầu vào chính xác và phù hợp với yêu cầu của phần mềm.
-
-    ### Hướng dẫn sử dụng
-    - **Mẫu Cắt Nhôm**: Dùng để nhập dữ liệu cắt nhôm, bao gồm các cột `Mã Thanh`, `Chiều Dài`, `Số Lượng`, và `Mã Cửa` (không bắt buộc). Mẫu này phù hợp để chuẩn bị dữ liệu cho tab **Tối Ưu Cắt Nhôm**.
-    - **Mẫu Phụ Kiện**: Dùng để nhập danh sách phụ kiện, bao gồm các cột `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, và `Số lượng`. Mẫu này được sử dụng trong tab **Tổng Hợp Phụ Kiện**.
-    - **Cách sử dụng**:
-      1. Nhấn vào nút **Tải mẫu cắt nhôm** hoặc **Tải mẫu phụ kiện** để tải file mẫu về máy.
-      2. Mở file mẫu bằng phần mềm Excel, nhập dữ liệu theo đúng định dạng cột.
-      3. Lưu file và tải lên ứng dụng ở các tab tương ứng để xử lý.
+    👉 Vui lòng sử dụng các mẫu bên dưới để đảm bảo định dạng chính xác khi nhập liệu:
+    - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (không bắt buộc)
+    - **Mẫu Phụ Kiện** gồm các cột: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
     """)
     # Dữ liệu mẫu cho cắt nhôm (giữ cột tiếng Việt)
     nhom_sample = pd.DataFrame({
