@@ -204,71 +204,14 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     # Sắp xếp và định dạng
     if not patterns_df.empty:
         patterns_df = patterns_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
-        patterns_df['Efficiency'] = patterns_df['Efficiency'].round(4)
+        patterns_df['Efficiency'] = patterns_df['Efficiency'].round(1)  # Làm tròn đến 1 chữ số thập phân
 
     if not summary_df.empty:
         summary_df = summary_df.sort_values('Profile Code').reset_index(drop=True)
-        summary_df['Overall Efficiency'] = summary_df['Overall Efficiency'].round(4)
-        summary_df['Average Bar Efficiency'] = summary_df['Average Bar Efficiency'].round(4)
+        summary_df['Overall Efficiency'] = summary_df['Overall Efficiency'].round(1)  # Làm tròn đến 1 chữ số
+        summary_df['Average Bar Efficiency'] = summary_df['Average Bar Efficiency'].round(1)  # Làm tròn đến 1 chữ số
 
     if not result_df.empty:
         result_df = result_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
 
     return result_df, patterns_df, summary_df
-
-def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock_length_options, cutting_gap):
-    with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
-        # Ghi các sheet hiện có
-        summary_df.to_excel(writer, sheet_name="Tổng Hợp", index=False)
-        patterns_df.to_excel(writer, sheet_name="Mẫu Cắt", index=False)
-        result_df.to_excel(writer, sheet_name="Chi Tiết Mảnh", index=False)
-
-        # Tạo sheet mới: Mô Phỏng Cắt
-        ws = writer.book.create_sheet("Mô Phỏng Cắt")
-
-        # Sắp xếp patterns_df theo Profile Code để nhóm mã nhôm
-        patterns_df = patterns_df.sort_values('Profile Code')
-
-        # Xác định số đoạn cắt tối đa trong bất kỳ mẫu cắt nào
-        max_pieces = patterns_df['Cutting Pattern'].apply(lambda x: len(x.split('+'))).max()
-
-        # Danh sách màu HEX cho các đoạn cắt
-        piece_colors = ["FF9999", "99FF99", "9999FF", "FFFF99", "FF99FF", "99FFFF"]
-
-        # Các cột gốc (loại bỏ 'Cutting Pattern')
-        original_columns = [col for col in patterns_df.columns if col != 'Cutting Pattern']
-
-        # Các cột cho từng đoạn cắt
-        piece_columns = [f"Piece {i+1}" for i in range(max_pieces)]
-
-        # Ghi tiêu đề cho sheet "Mô Phỏng Cắt"
-        headers = original_columns + piece_columns
-        for col_num, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col_num, value=header)
-
-        # Chỉ số cột trong patterns_df
-        column_indices = {col: i for i, col in enumerate(patterns_df.columns)}
-
-        # Ghi dữ liệu vào sheet
-        for row_num, row in enumerate(patterns_df.itertuples(index=False), 2):
-            # Ghi các cột gốc
-            for col_num, col in enumerate(original_columns, 1):
-                value = row[column_indices[col]]
-                ws.cell(row=row_num, column=col_num, value=value)
-
-            # Tách mẫu cắt và ghi từng đoạn
-            pieces = row[column_indices['Cutting Pattern']].split('+')
-            for piece_num, piece in enumerate(pieces):
-                col_num = len(original_columns) + piece_num + 1
-                cell = ws.cell(row=row_num, column=col_num, value=float(piece))
-                # Áp dụng màu nền
-                color = piece_colors[piece_num % len(piece_colors)]
-                fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
-                cell.fill = fill
-
-        # Sheet Tham Số
-        params_df = pd.DataFrame({
-            'Tham Số': ['Kích Thước Thanh Có Sẵn', 'Khoảng Cách Cắt'],
-            'Giá Trị': [', '.join(map(str, stock_length_options)), cutting_gap]
-        })
-        params_df.to_excel(writer, sheet_name="Tham Số", index=False)
