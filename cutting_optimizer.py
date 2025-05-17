@@ -191,6 +191,8 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         for pattern, remaining, stock_length in zip(patterns, remaining_lengths, stock_lengths_used):
             used_length = sum(pattern)
             efficiency = used_length / stock_length if stock_length > 0 else 0
+            # Đảm bảo hiệu suất nằm trong khoảng 0-100%
+            efficiency = max(0, min(100, efficiency * 100))  # Nhân 100 và giới hạn trong [0, 100]
             # Làm tròn các số trong pattern trước khi tạo chuỗi Cutting Pattern
             pattern_rounded = [round(x, 1) if x % 1 != 0 else int(x) for x in pattern]
             pattern_data.append({
@@ -199,7 +201,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 'Chiều Dài Thanh': stock_length,
                 'Chiều Dài Sử Dụng': used_length,
                 'Chiều Dài Còn Lại': remaining,
-                'Hiệu Suất': efficiency * 100,  # Chuyển đổi hiệu suất thành phần trăm
+                'Hiệu Suất': efficiency,
                 'Mẫu Cắt': '+'.join(map(str, pattern_rounded)),
                 'Số Đoạn Cắt': len(pattern)
             })
@@ -231,6 +233,10 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         total_length_needed = sum(lengths)
         total_length_used = sum(pattern['Chiều Dài Thanh'] for pattern in pattern_data)
         avg_efficiency = sum(p['Hiệu Suất'] for p in pattern_data) / len(pattern_data) if pattern_data else 0
+        overall_efficiency = (total_length_needed / total_length_used if total_length_used > 0 else 0) * 100
+        # Đảm bảo hiệu suất nằm trong khoảng 0-100%
+        overall_efficiency = max(0, min(100, overall_efficiency))
+        avg_efficiency = max(0, min(100, avg_efficiency))
         waste = total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap
 
         all_summaries.append({
@@ -240,8 +246,8 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
             'Tổng Chiều Dài Cần (mm)': total_length_needed,
             'Tổng Chiều Dài Nguyên Liệu (mm)': total_length_used,
             'Phế Liệu (mm)': waste,
-            'Hiệu Suất Tổng Thể': (total_length_needed / total_length_used if total_length_used > 0 else 0) * 100,  # Chuyển đổi thành phần trăm
-            'Hiệu Suất Trung Bình': avg_efficiency  # Đã nhân 100 ở pattern_data
+            'Hiệu Suất Tổng Thể': overall_efficiency,
+            'Hiệu Suất Trung Bình': avg_efficiency
         })
 
     # Tạo DataFrame kết quả
