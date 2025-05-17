@@ -1,6 +1,6 @@
 import pandas as pd
-import streamlit as st
-import io
+import streamlit as st  # Giữ lại để tương thích nếu cần
+import io  # Giữ lại để tương thích nếu cần
 import openpyxl
 from openpyxl.styles import PatternFill
 
@@ -55,6 +55,51 @@ def create_accessory_summary(input_df, output_stream):
         grouped.to_excel(writer, sheet_name="Tổng Hợp Phụ Kiện", index=False)
 
     return grouped
+
+def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options, optimize_stock_length):
+    """
+    Hàm tối ưu hóa cắt nhôm (ví dụ đơn giản).
+    
+    Tham số:
+    - df: DataFrame chứa dữ liệu đầu vào (Profile Code, Length, Quantity)
+    - cutting_gap: Khoảng cách cắt (mm)
+    - optimization_method: Phương pháp tối ưu ("Tối Ưu Hiệu Suất Cao Nhất" hoặc "Tối Ưu Số Lượng Thanh")
+    - stock_length_options: Danh sách kích thước thanh có sẵn (mm)
+    - optimize_stock_length: Có tối ưu hóa kích thước thanh hay không
+    
+    Trả về:
+    - result_df: DataFrame chi tiết mảnh cắt
+    - patterns_df: DataFrame mẫu cắt
+    - summary_df: DataFrame tổng hợp
+    """
+    # Giả lập patterns_df (mẫu cắt)
+    patterns_df = pd.DataFrame({
+        'Profile Code': df['Profile Code'],
+        'Bar Number': [1] * len(df),  # Giả định mỗi mã thanh chỉ dùng 1 thanh
+        'Stock Length': [stock_length_options[0]] * len(df),  # Sử dụng kích thước thanh đầu tiên
+        'Used Length': df['Length'],  # Chiều dài đã sử dụng
+        'Remaining Length': [stock_length_options[0] - x for x in df['Length']],  # Chiều dài còn lại
+        'Efficiency': [0.9] * len(df),  # Hiệu suất giả lập
+        'Cutting Pattern': [str(x) for x in df['Length']],  # Mẫu cắt giả lập
+        'Pieces': [1] * len(df)  # Số đoạn cắt giả lập
+    })
+
+    # Giả lập summary_df (tổng hợp)
+    summary_df = pd.DataFrame({
+        'Profile Code': df['Profile Code'].unique(),
+        'Total Pieces': [len(df)] * len(df['Profile Code'].unique()),  # Tổng số đoạn cắt
+        'Total Bars Used': [1] * len(df['Profile Code'].unique()),  # Tổng số thanh sử dụng
+        'Total Length Needed (mm)': [df['Length'].sum()] * len(df['Profile Code'].unique()),  # Tổng chiều dài cần
+        'Total Stock Length (mm)': [stock_length_options[0]] * len(df['Profile Code'].unique()),  # Tổng chiều dài nguyên liệu
+        'Waste (mm)': [stock_length_options[0] - df['Length'].sum()] * len(df['Profile Code'].unique()),  # Phế liệu
+        'Overall Efficiency': [0.9] * len(df['Profile Code'].unique()),  # Hiệu suất tổng thể
+        'Average Bar Efficiency': [0.9] * len(df['Profile Code'].unique())  # Hiệu suất trung bình
+    })
+
+    # Giả lập result_df (chi tiết mảnh cắt)
+    result_df = df.copy()  # Sao chép DataFrame đầu vào
+
+    return result_df, patterns_df, summary_df
 
 def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock_length_options, cutting_gap):
     with pd.ExcelWriter(output_stream, engine='openpyxl') as writer:
