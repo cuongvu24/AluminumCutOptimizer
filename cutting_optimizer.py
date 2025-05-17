@@ -48,14 +48,17 @@ def create_accessory_summary(input_df, output_stream):
 
 def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options, optimize_stock_length):
     """
-    Hàm tối ưu hóa cắt nhôm (triển khai thực tế).
+    Hàm tối ưu hóa cắt nhôm, hỗ trợ ba chế độ tối ưu:
+    - "Tối Ưu Hiệu Suất Cao Nhất": Chọn một kích thước thanh tốt nhất để tối ưu hiệu suất.
+    - "Tối Ưu Số Lượng Thanh": Chọn một kích thước thanh tốt nhất để tối ưu số lượng thanh.
+    - "Tối Ưu Linh Hoạt": Sử dụng nhiều kích thước thanh để giảm phế liệu.
     
     Tham số:
     - df: DataFrame chứa dữ liệu đầu vào (Mã Thanh, Chiều Dài, Số Lượng, [Mã Cửa])
     - cutting_gap: Khoảng cách cắt (mm)
-    - optimization_method: Phương pháp tối ưu ("Tối Ưu Hiệu Suất Cao Nhất" hoặc "Tối Ưu Số Lượng Thanh")
+    - optimization_method: Phương pháp tối ưu ("Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt")
     - stock_length_options: Danh sách kích thước thanh có sẵn (mm)
-    - optimize_stock_length: Có tối ưu hóa kích thước thanh hay không
+    - optimize_stock_length: Có tối ưu hóa kích thước thanh hay không (không sử dụng trong phiên bản này)
     
     Trả về:
     - result_df: DataFrame chi tiết mảnh cắt (bao gồm cột Mã Cửa)
@@ -92,67 +95,105 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     for profile_code in profile_codes:
         profile_data = expanded_df[expanded_df['Mã Thanh'] == profile_code].copy()
         lengths = profile_data['Chiều Dài'].values
-        lengths = sorted(lengths, reverse=True)  # Sắp xếp giảm dần
+        lengths = sorted(lengths, reverse=True)  # Sắp xếp giảm dần để tối ưu
 
-        best_patterns = []
-        best_remaining_lengths = []
-        best_stock_length = stock_length_options[0]
-        best_efficiency = 0
-        best_bar_count = float('inf')
+        patterns = []
+        remaining_lengths = []
+        stock_lengths_used = []  # Lưu kích thước thanh được sử dụng cho từng thanh
 
-        # Thử từng kích thước thanh có sẵn
-        for current_stock_length in stock_length_options:
-            patterns = []
-            remaining_lengths = []
-
+        if optimization_method == "Tối Ưu Linh Hoạt":
+            # Chế độ linh hoạt: Sử dụng nhiều kích thước thanh
             for length in lengths:
                 added = False
+                # Thử gán vào các thanh hiện có
                 for i, remaining in enumerate(remaining_lengths):
                     if length <= remaining - cutting_gap:
                         patterns[i].append(length)
                         remaining_lengths[i] -= (length + cutting_gap)
                         added = True
                         break
+
+                # Nếu không gán được vào thanh hiện có, tạo thanh mới
                 if not added:
-                    patterns.append([length])
-                    remaining_lengths.append(current_stock_length - length - cutting_gap)
+                    best_remaining = float('inf')
+                    best_pattern = None
+                    best_stock_length = None
 
-            total_used_length = sum(sum(pattern) for pattern in patterns)
-            total_stock_length = current_stock_length * len(patterns)
-            current_efficiency = total_used_length / total_stock_length if total_stock_length > 0 else 0
+                    # Thử từng kích thước thanh có sẵn
+                    for stock_length in stock_length_options:
+                        temp_pattern = [length]
+                        temp_remaining = stock_length - length - cutting_gap
 
-            if optimization_method == "Tối Ưu Hiệu Suất Cao Nhất":
-                if current_efficiency > best_efficiency:
-                    best_patterns = patterns
-                    best_remaining_lengths = remaining_lengths
-                    best_stock_length = current_stock_length
-                    best_efficiency = current_efficiency
-                    best_bar_count = len(patterns)
-            else:  # Tối Ưu Số Lượng Thanh
-                if len(patterns) < best_bar_count or (len(patterns) == best_bar_count and current_efficiency > best_efficiency):
-                    best_patterns = patterns
-                    best_remaining_lengths = remaining_lengths
-                    best_stock_length = current_stock_length
-                    best_efficiency = current_efficiency
-                    best_bar_count = len(patterns)
+                        # Chọn kích thước thanh sao cho phế liệu nhỏ nhất
+                        if temp_remaining < best_remaining:
+                            best_remaining = temp_remaining
+                            best_pattern = temp_pattern
+                            best_stock_length = stock_length
 
-        patterns = best_patterns
-        remaining_lengths = best_remaining_lengths
-        current_stock_length = best_stock_length
+                    patterns.append(best_pattern)
+                    remaining_lengths.append(best_remaining)
+                    stock_lengths_used.append(best_stock_length)
+        else:
+            # Chế độ cũ: Chọn một kích thước thanh tốt nhất cho toàn bộ mã nhôm
+            best_patterns = []
+            best_remaining_lengths = []
+            best_stock_length = stock_length_options[0]
+            best_efficiency = 0
+            best_bar_count = float('inf')
+
+            # Thử từng kích thước thanh có sẵn
+            for current_stock_length in stock_length_options:
+                temp_patterns = []
+                temp_remaining_lengths = []
+
+                for length in lengths:
+                    added = False
+                    for i, remaining in enumerate(temp_remaining_lengths):
+                        if length <= remaining - cutting_gap:
+                            temp_patterns[i].append(length)
+                            temp_remaining_lengths[i] -= (length + cutting_gap)
+                            added = True
+                            break
+                    if not added:
+                        temp_patterns.append([length])
+                        temp_remaining_lengths.append(current_stock_length - length - cutting_gap)
+
+                total_used_length = sum(sum(pattern) for pattern in temp_patterns)
+                total_stock_length = current_stock_length * len(temp_patterns)
+                current_efficiency = total_used_length / total_stock_length if total_stock_length > 0 else 0
+
+                if optimization_method == "Tối Ưu Hiệu Suất Cao Nhất":
+                    if current_efficiency > best_efficiency:
+                        best_patterns = temp_patterns
+                        best_remaining_lengths = temp_remaining_lengths
+                        best_stock_length = current_stock_length
+                        best_efficiency = current_efficiency
+                        best_bar_count = len(temp_patterns)
+                else:  # Tối Ưu Số Lượng Thanh
+                    if len(temp_patterns) < best_bar_count or (len(temp_patterns) == best_bar_count and current_efficiency > best_efficiency):
+                        best_patterns = temp_patterns
+                        best_remaining_lengths = temp_remaining_lengths
+                        best_stock_length = current_stock_length
+                        best_efficiency = current_efficiency
+                        best_bar_count = len(temp_patterns)
+
+            patterns = best_patterns
+            remaining_lengths = best_remaining_lengths
+            # Với chế độ cũ, tất cả thanh sử dụng cùng một kích thước
+            stock_lengths_used = [best_stock_length] * len(patterns)
 
         # Tạo dữ liệu mẫu cắt
         pattern_data = []
         bar_number = 1
-
-        for pattern, remaining in zip(patterns, remaining_lengths):
+        for pattern, remaining, stock_length in zip(patterns, remaining_lengths, stock_lengths_used):
             used_length = sum(pattern)
-            efficiency = used_length / current_stock_length if current_stock_length > 0 else 0
+            efficiency = used_length / stock_length if stock_length > 0 else 0
             # Làm tròn các số trong pattern trước khi tạo chuỗi Cutting Pattern
             pattern_rounded = [round(x, 1) if x % 1 != 0 else int(x) for x in pattern]
             pattern_data.append({
                 'Mã Thanh': profile_code,
                 'Số Thanh': bar_number,
-                'Chiều Dài Thanh': current_stock_length,
+                'Chiều Dài Thanh': stock_length,
                 'Chiều Dài Sử Dụng': used_length,
                 'Chiều Dài Còn Lại': remaining,
                 'Hiệu Suất': efficiency,
