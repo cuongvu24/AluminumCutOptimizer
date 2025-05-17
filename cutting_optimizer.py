@@ -150,6 +150,8 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         for pattern, remaining in zip(patterns, remaining_lengths):
             used_length = sum(pattern)
             efficiency = used_length / current_stock_length if current_stock_length > 0 else 0
+            # Làm tròn các số trong pattern trước khi tạo chuỗi Cutting Pattern
+            pattern_rounded = [round(x, 1) if x % 1 != 0 else int(x) for x in pattern]
             pattern_data.append({
                 'Profile Code': profile_code,
                 'Bar Number': bar_number,
@@ -157,7 +159,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 'Used Length': used_length,
                 'Remaining Length': remaining,
                 'Efficiency': efficiency,
-                'Cutting Pattern': '+'.join(map(str, pattern)),
+                'Cutting Pattern': '+'.join(map(str, pattern_rounded)),
                 'Pieces': len(pattern)
             })
 
@@ -184,6 +186,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         total_length_needed = sum(lengths)
         total_length_used = sum(pattern['Stock Length'] for pattern in pattern_data)
         avg_efficiency = sum(p['Efficiency'] for p in pattern_data) / len(pattern_data) if pattern_data else 0
+        waste = total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap
 
         all_summaries.append({
             'Profile Code': profile_code,
@@ -191,7 +194,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
             'Total Bars Used': total_bars,
             'Total Length Needed (mm)': total_length_needed,
             'Total Stock Length (mm)': total_length_used,
-            'Waste (mm)': total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap,
+            'Waste (mm)': waste,
             'Overall Efficiency': total_length_needed / total_length_used if total_length_used > 0 else 0,
             'Average Bar Efficiency': avg_efficiency
         })
@@ -204,12 +207,13 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
     # Sắp xếp và định dạng
     if not patterns_df.empty:
         patterns_df = patterns_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
-        patterns_df['Efficiency'] = patterns_df['Efficiency'].round(1)  # Làm tròn đến 1 chữ số thập phân
+        patterns_df['Efficiency'] = patterns_df['Efficiency'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not summary_df.empty:
         summary_df = summary_df.sort_values('Profile Code').reset_index(drop=True)
-        summary_df['Overall Efficiency'] = summary_df['Overall Efficiency'].round(1)  # Làm tròn đến 1 chữ số
-        summary_df['Average Bar Efficiency'] = summary_df['Average Bar Efficiency'].round(1)  # Làm tròn đến 1 chữ số
+        summary_df['Overall Efficiency'] = summary_df['Overall Efficiency'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        summary_df['Average Bar Efficiency'] = summary_df['Average Bar Efficiency'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
+        summary_df['Waste (mm)'] = summary_df['Waste (mm)'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not result_df.empty:
         result_df = result_df.sort_values(['Profile Code', 'Bar Number']).reset_index(drop=True)
