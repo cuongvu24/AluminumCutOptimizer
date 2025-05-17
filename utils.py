@@ -100,14 +100,32 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
                     # Ghi các cột gốc
                     for col_num, col in enumerate(original_columns, 1):
                         value = row[column_indices[col]]
-                        ws.cell(row=row_num, column=col_num, value=value)
+                        if isinstance(value, float):
+                            # Nếu là số thập phân, làm tròn đến 1 chữ số thập phân
+                            if value % 1 != 0:  # Kiểm tra nếu không phải số nguyên
+                                value = round(value, 1)
+                                ws.cell(row=row_num, column=col_num, value=value).number_format = '0.0'
+                            else:
+                                # Nếu là số nguyên, giữ nguyên
+                                ws.cell(row=row_num, column=col_num, value=int(value)).number_format = '0'
+                        else:
+                            ws.cell(row=row_num, column=col_num, value=value)
 
                     # Tách mẫu cắt và ghi từng đoạn nếu có cột Mẫu Cắt
                     if 'Mẫu Cắt' in patterns_df.columns:
                         pieces = row[column_indices['Mẫu Cắt']].split('+')
                         for piece_num, piece in enumerate(pieces):
                             col_num = len(original_columns) + piece_num + 1
-                            cell = ws.cell(row=row_num, column=col_num, value=float(piece))
+                            value = float(piece)
+                            # Nếu là số thập phân, làm tròn đến 1 chữ số thập phân
+                            if value % 1 != 0:  # Kiểm tra nếu không phải số nguyên
+                                value = round(value, 1)
+                                cell = ws.cell(row=row_num, column=col_num, value=value)
+                                cell.number_format = '0.0'
+                            else:
+                                # Nếu là số nguyên, giữ nguyên
+                                cell = ws.cell(row=row_num, column=col_num, value=int(value))
+                                cell.number_format = '0'
                             # Áp dụng màu nền
                             color = piece_colors[piece_num % len(piece_colors)]
                             fill = PatternFill(start_color=color, end_color=color, fill_type="solid")
