@@ -58,20 +58,27 @@ with tab_upload:
     st.subheader("📥 Tải xuống mẫu nhập liệu")
     st.markdown("""
     👉 Vui lòng sử dụng các mẫu bên dưới để đảm bảo định dạng chính xác khi nhập liệu:
-    - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`
+    - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (không bắt buộc)
     - **Mẫu Phụ Kiện** gồm các cột: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
     """)
-    nhom_sample = pd.DataFrame({'Profile Code': ['ABC', 'ABC'], 'Length': [1000, 1200], 'Quantity': [3, 4]})
+    # Dữ liệu mẫu cho cắt nhôm (giữ nguyên cột tiếng Việt)
+    nhom_sample = pd.DataFrame({
+        'Mã Thanh': ['TNG1', 'TNG2', 'TNG3', 'TNG4'],
+        'Chiều Dài': [2000, 1500, 3000, 2500],
+        'Số Lượng': [2, 5, 3, 4],
+        'Mã Cửa': ['D001', 'D002', 'D003', 'D004']
+    })
     out_nhom = io.BytesIO()
     nhom_sample.to_excel(out_nhom, index=False)
     out_nhom.seek(0)
     st.download_button("📄 Tải mẫu cắt nhôm", out_nhom, "mau_cat_nhom.xlsx")
 
+    # Dữ liệu mẫu cho phụ kiện (giữ nguyên)
     pk_sample = pd.DataFrame({
-        'Mã phụ kiện': ['PK001', 'PK002'],
-        'Tên phụ phiện': ['Gioăng', 'Bulong'],
-        'Đơn vị tính': ['cái', 'bộ'],
-        'Số lượng': [10, 20]
+        'Mã phụ kiện': ['PK001', 'PK002', 'PK003', 'PK004'],
+        'Tên phụ phiện': ['Gioăng', 'Bulong', 'Đinh vít', 'Ke góc'],
+        'Đơn vị tính': ['cái', 'bộ', 'cái', 'bộ'],
+        'Số lượng': [15, 25, 50, 10]
     })
     out_pk = io.BytesIO()
     pk_sample.to_excel(out_pk, index=False)
@@ -148,17 +155,7 @@ with tab_cat_nhom:
     if st.session_state.result_data:
         result_df, patterns_df, summary_df, stock_length_options, cutting_gap = st.session_state.result_data
 
-        # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân
-        summary_df = summary_df.rename(columns={
-            'Profile Code': 'Mã Thanh',
-            'Total Pieces': 'Tổng Đoạn Cắt',
-            'Total Bars Used': 'Số Thanh Sử Dụng',
-            'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-            'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-            'Waste (mm)': 'Phế Liệu (mm)',
-            'Overall Efficiency': 'Hiệu Suất Tổng Thể',
-            'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
-        })
+        # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân (không cần rename vì đã giữ tên tiếng Việt)
         st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
         # Định dạng số thập phân trong bảng hiển thị
         summary_df_display = summary_df.style.format({
@@ -168,17 +165,7 @@ with tab_cat_nhom:
         })
         st.dataframe(summary_df_display)
 
-        # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân
-        patterns_df = patterns_df.rename(columns={
-            'Profile Code': 'Mã Thanh',
-            'Bar Number': 'Số Thanh',
-            'Stock Length': 'Chiều Dài Thanh',
-            'Used Length': 'Chiều Dài Sử Dụng',
-            'Remaining Length': 'Chiều Dài Còn Lại',
-            'Efficiency': 'Hiệu Suất',
-            'Cutting Pattern': 'Mẫu Cắt',
-            'Pieces': 'Số Đoạn Cắt'
-        })
+        # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân (không cần rename vì đã giữ tên tiếng Việt)
         st.subheader("📋 Danh Sách Mẫu Cắt")
         # Định dạng số thập phân trong bảng hiển thị
         patterns_df_display = patterns_df.style.format({
@@ -188,11 +175,9 @@ with tab_cat_nhom:
         })
         st.dataframe(patterns_df_display)
 
-        # Đổi tên cột cho bảng chi tiết mảnh cắt
+        # Đổi tên cột cho bảng chi tiết mảnh cắt (chỉ đổi một số cột nội bộ, giữ các cột đầu vào tiếng Việt)
         result_df = result_df.rename(columns={
-            'Profile Code': 'Mã Thanh',
             'Item ID': 'Mã Mảnh',
-            'Length': 'Chiều Dài',
             'Bar Number': 'Số Thanh'
         })
         st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
