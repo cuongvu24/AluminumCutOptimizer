@@ -4,7 +4,6 @@ import io
 import time
 import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
-from W utils import create_output_excel, create_accessory_summary, validate_input_excel
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
