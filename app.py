@@ -57,7 +57,7 @@ uploaded_file = st.file_uploader("📤 Tải lên tệp Excel dữ liệu", type
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
-# Thêm tab "Giới Thiệu" vào danh sách tab
+# Các tab chính
 tab_intro, tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
 
 # Tab Giới Thiệu
@@ -96,6 +96,7 @@ with tab_intro:
            - **Tối Ưu Hiệu Suất Cao Nhất**: Chọn kích thước thanh để tối đa hóa hiệu suất sử dụng nguyên liệu (tỷ lệ giữa chiều dài sử dụng và chiều dài thanh).
            - **Tối Ưu Số Lượng Thanh**: Chọn kích thước thanh để sử dụng ít thanh nhất, giảm số lượng thanh cần thiết.
            - **Tối Ưu Linh Hoạt**: Sử dụng nhiều kích thước thanh khác nhau (ví dụ: 5800mm và 6000mm) để giảm thiểu phế liệu, linh hoạt hơn trong việc cắt.
+           - **Tối Ưu PuLP**: Sử dụng lập trình tuyến tính với PuLP để tối ưu chính xác (có thể mất thời gian với dữ liệu lớn).
       3. Nhấn nút **"Tối Ưu Hóa"** để chạy tính toán.
       4. Xem kết quả:
          - **Bảng Tổng Hợp Hiệu Suất**: Hiển thị hiệu suất tổng thể, số lượng thanh, và phế liệu của từng mã nhôm.
@@ -109,6 +110,7 @@ with tab_intro:
     - Đảm bảo file nhập liệu đúng định dạng theo mẫu được cung cấp, nếu không ứng dụng sẽ báo lỗi.
     - Kích thước thanh và khoảng cách cắt phải là số dương, hợp lý với thực tế sản xuất.
     - Khi sử dụng chế độ "Tối Ưu Linh Hoạt", nên nhập nhiều kích thước thanh để đạt hiệu quả tối ưu nhất.
+    - Phương pháp "Tối Ưu PuLP" có thể mất nhiều thời gian với dữ liệu lớn, hãy cân nhắc số lượng mẫu cắt tối đa.
     """)
 
 # Tab Tải Mẫu Nhập
@@ -119,7 +121,6 @@ with tab_upload:
     - **Mẫu Cắt Nhôm** gồm các cột: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (không bắt buộc)
     - **Mẫu Phụ Kiện** gồm các cột: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
     """)
-    # Dữ liệu mẫu cho cắt nhôm (giữ cột tiếng Việt)
     nhom_sample = pd.DataFrame({
         'Mã Thanh': ['TNG1', 'TNG2', 'TNG3', 'TNG4'],
         'Chiều Dài': [2000, 1500, 3000, 2500],
@@ -131,7 +132,6 @@ with tab_upload:
     out_nhom.seek(0)
     st.download_button("📄 Tải mẫu cắt nhôm", out_nhom, "mau_cat_nhom.xlsx")
 
-    # Dữ liệu mẫu cho phụ kiện (giữ nguyên)
     pk_sample = pd.DataFrame({
         'Mã phụ kiện': ['PK001', 'PK002', 'PK003', 'PK004'],
         'Tên phụ phiện': ['Gioăng', 'Bulong', 'Đinh vít', 'Ke góc'],
@@ -162,214 +162,204 @@ with tab_phu_kien:
 with tab_cat_nhom:
     st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
     
-    # Phần lịch sử tối ưu hóa
-    st.markdown("### 📜 Lịch Sử Tối Ưu Hóa")
-    history_data = load_optimization_history()
-    if history_data:
-        history_df = pd.DataFrame([
-            {
-                'ID': entry['id'],
-                'Thời Gian': entry['timestamp'],
-                'Phương Pháp Tối Ưu': entry['optimization_method'],
-                'Mã Thanh': ', '.join(entry['profile_codes']),
-                'Kích Thước Thanh': ', '.join(map(str, entry['stock_length_options'])),
-                'Khoảng Cách Cắt': entry['cutting_gap']
-            }
-            for entry in history_data
-        ])
-        st.dataframe(history_df)
-        
-        selected_history_id = st.selectbox("Chọn lịch sử để xem chi tiết", [''] + [entry['id'] for entry in history_data])
-        if selected_history_id:
-            selected_entry = next((entry for entry in history_data if entry['id'] == selected_history_id), None)
-            if selected_entry:
-                result_df = pd.DataFrame(selected_entry['result_df'])
-                patterns_df = pd.DataFrame(selected_entry['patterns_df'])
-                summary_df = pd.DataFrame(selected_entry['summary_df'])
-                stock_length_options = selected_entry['stock_length_options']
-                cutting_gap = selected_entry['cutting_gap']
-                
-                st.markdown("#### Kết Quả Lịch Sử")
-                st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
-                summary_df_display = summary_df.style.format({
-                    'Hiệu Suất Tổng Thể': "{:.1f}%",
-                    'Hiệu Suất Trung Bình': "{:.1f}%",
-                    'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
-                })
-                st.dataframe(summary_df_display)
+    # Tạo sub-tabs trong Tối Ưu Cắt Nhôm
+    subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa Mới", "Lịch Sử Tối Ưu Hóa"])
+    
+    # Sub-tab Lịch Sử Tối Ưu Hóa
+    with subtab_history:
+        st.markdown("### 📜 Lịch Sử Tối Ưu Hóa")
+        history_data = load_optimization_history()
+        if history_data:
+            history_df = pd.DataFrame([
+                {
+                    'ID': entry['id'],
+                    'Tên': entry.get('name', entry['timestamp']),  # Sử dụng tên nếu có, nếu không thì dùng timestamp
+                    'Thời Gian': entry['timestamp'],
+                    'Phương Pháp Tối Ưu': entry['optimization_method'],
+                    'Mã Thanh': ', '.join(entry['profile_codes']),
+                    'Kích Thước Thanh': ', '.join(map(str, entry['stock_length_options'])),
+                    'Khoảng Cách Cắt': entry['cutting_gap']
+                }
+                for entry in history_data
+            ])
+            st.dataframe(history_df)
+            
+            selected_history_id = st.selectbox("Chọn lịch sử để xem chi tiết", [''] + [entry['id'] for entry in history_data])
+            if selected_history_id:
+                selected_entry = next((entry for entry in history_data if entry['id'] == selected_history_id), None)
+                if selected_entry:
+                    result_df = pd.DataFrame(selected_entry['result_df'])
+                    patterns_df = pd.DataFrame(selected_entry['patterns_df'])
+                    summary_df = pd.DataFrame(selected_entry['summary_df'])
+                    stock_length_options = selected_entry['stock_length_options']
+                    cutting_gap = selected_entry['cutting_gap']
+                    
+                    # Cho phép chỉnh sửa tên lịch sử
+                    current_name = selected_entry.get('name', selected_entry['timestamp'])
+                    new_name = st.text_input("Đặt tên cho lịch sử này", value=current_name, key=f"name_{selected_history_id}")
+                    if new_name != current_name:
+                        history_data = [entry for entry in history_data if entry['id'] != selected_history_id]
+                        selected_entry['name'] = new_name
+                        history_data.append(selected_entry)
+                        with open("history.json", 'w', encoding='utf-8') as f:
+                            json.dump(history_data, f, ensure_ascii=False, indent=2)
+                        st.success("✅ Đã cập nhật tên lịch sử!")
+                    
+                    st.markdown("#### Kết Quả Lịch Sử")
+                    st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
+                    summary_df_display = summary_df.style.format({
+                        'Hiệu Suất Tổng Thể': "{:.1f}%",
+                        'Hiệu Suất Trung Bình': "{:.1f}%",
+                        'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+                    })
+                    st.dataframe(summary_df_display)
 
-                st.subheader("📋 Danh Sách Mẫu Cắt")
-                patterns_df_display = patterns_df.style.format({
-                    'Hiệu Suất': "{:.1f}%",
-                    'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-                    'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
-                })
-                st.dataframe(patterns_df_display)
+                    st.subheader("📋 Danh Sách Mẫu Cắt")
+                    patterns_df_display = patterns_df.style.format({
+                        'Hiệu Suất': "{:.1f}%",
+                        'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+                        'Thời Gian Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+                    })
+                    st.dataframe(patterns_df_display)
 
-                st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
-                result_df = result_df.rename(columns={'Item ID': 'Mã Mảnh', 'Bar Number': 'Số Thanh'})
-                st.dataframe(result_df)
+                    st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
+                    result_df = result_df.rename(columns={'Item ID': 'Mã Mảnh', 'Bar Number': 'Số Thanh'})
+                    st.dataframe(result_df)
 
-                st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
-                selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique(), key=f"history_profile_{selected_history_id}")
-                filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
-                for idx, row in filtered.iterrows():
-                    st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
-                    display_pattern(row, cutting_gap)
+                    st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
+                    selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique(), key=f"history_profile_{selected_history_id}")
+                    filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
+                    patterns_df_display = filtered.style.format({
+                        'Hiệu Suất': "{:.1f}%",
+                        'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+                        'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+                    })
+                    st.dataframe(patterns_df_display)
 
-                # Tải xuống kết quả lịch sử
-                output = io.BytesIO()
-                create_output_excel(output, result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
-                output.seek(0)
-                st.download_button("📥 Tải Xuống Kết Quả Lịch Sử", output, f"ket_qua_cat_nhom_{selected_entry['timestamp'].replace(':', '-')}.xlsx")
-                
-                # Nút xóa lịch sử
-                if st.button("🗑️ Xóa Lịch Sử Này"):
-                    delete_optimization_history_entry(selected_history_id)
-                    st.success("✅ Đã xóa lịch sử!")
-                    st.experimental_rerun()
-    else:
-        st.info("ℹ️ Chưa có lịch sử tối ưu hóa.")
+                    # Tải xuống kết quả lịch sử
+                    output = io.BytesIO()
+                    create_output_excel(output, result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
+                    output.seek(0)
+                    st.download_button("📥 Tải Xuống Kết Quả Lịch Sử", output, f"ket_qua_cat_nhom_{selected_entry['timestamp'].replace(':', '-')}.xlsx")
+                    
+                    # Nút xóa lịch sử
+                    if st.button("🗑️ Xóa Lịch Sử Này"):
+                        delete_optimization_history_entry(selected_history_id)
+                        st.success("✅ Đã xóa lịch sử!")
+                        st.experimental_rerun()
+        else:
+            st.info("ℹ️ Chưa có lịch sử tối ưu hóa.")
 
-    # Phần tối ưu hóa mới
-    st.markdown("### ✂️ Tối Ưu Hóa Mới")
-    if uploaded_file:
-        try:
-            df = pd.read_excel(uploaded_file)
-            valid, message = validate_input_excel(df)
-            if not valid:
-                st.error(message)
-            else:
-                st.success("✅ Dữ liệu nhôm hợp lệ!")
-                st.dataframe(df)
+    # Sub-tab Tối Ưu Hóa Mới
+    with subtab_new:
+        st.markdown("### ✂️ Tối Ưu Hóa Mới")
+        if uploaded_file:
+            try:
+                df = pd.read_excel(uploaded_file)
+                valid, message = validate_input_excel(df)
+                if not valid:
+                    st.error(message)
+                else:
+                    st.success("✅ Dữ liệu nhôm hợp lệ!")
+                    st.dataframe(df)
 
-                # Gộp các trường nhập liệu vào một hàng với 3 cột
-                col1, col2, col3 = st.columns(3)
+                    col1, col2, col3 = st.columns(3)
 
-                with col1:
-                    length_text = st.text_input("Nhập kích thước thanh (mm, phân cách bằng dấu phẩy)", "5800, 6000, 6200, 6500")
+                    with col1:
+                        length_text = st.text_input("Nhập kích thước thanh (mm, phân cách bằng dấu phẩy)", "5800, 6000, 6200, 6500")
 
-                with col2:
-                    cutting_gap = st.number_input("Khoảng cách cắt (mm)", 1, 100, 10, 1)
+                    with col2:
+                        cutting_gap = st.number_input("Khoảng cách cắt (mm)", 1, 100, 10, 1)
 
-                with col3:
-                    optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt", "Tối Ưu PuLP"])
+                    with col3:
+                        optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt", "Tối Ưu PuLP"])
 
-                # Nút tối ưu hóa
-                if st.button("🚀 Tối Ưu Hóa"):
-                    # Chuyển chuỗi kích thước thanh thành danh sách số
-                    stock_length_options = [int(x.strip()) for x in length_text.split(",") if x.strip().isdigit()]
+                    # Thêm trường nhập tên cho lần tối ưu hóa
+                    history_name = st.text_input("Tên cho lần tối ưu hóa này", value=f"Tối ưu hóa {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-                    if not stock_length_options:
-                        st.error("Vui lòng nhập ít nhất một kích thước thanh.")
-                    else:
-                        try:
-                            start_time = time.time()
-                            result_df, patterns_df, summary_df = optimize_cutting(
-                                df,
-                                cutting_gap=cutting_gap,
-                                optimization_method=optimization_method,
-                                stock_length_options=stock_length_options,
-                                optimize_stock_length=True
-                            )
-                            elapsed = time.time() - start_time
-                            elapsed_formatted = f"{elapsed:.1f}" if elapsed % 1 != 0 else f"{int(elapsed)}"
-                            st.success(f"✅ Hoàn tất trong {elapsed_formatted} giây")
-                            st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
-                            
-                            # Lưu vào lịch sử
-                            save_optimization_history(
-                                result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method
-                            )
-                        except Exception as opt_err:
-                            st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
-        except Exception as e:
-            st.error(f"❌ Lỗi xử lý file: {e}")
+                    # Nút tối ưu hóa
+                    if st.button("🚀 Tối Ưu Hóa"):
+                        stock_length_options = [int(x.strip()) for x in length_text.split(",") if x.strip().isdigit()]
 
-    # Hiển thị kết quả nếu có
-    if st.session_state.result_data:
-        result_df, patterns_df, summary_df, stock_length_options, cutting_gap = st.session_state.result_data
+                        if not stock_length_options:
+                            st.error("Vui lòng nhập ít nhất một kích thước thanh.")
+                        else:
+                            try:
+                                start_time = time.time()
+                                progress_bar = st.progress(0)
+                                result_df, patterns_df, summary_df = optimize_cutting(
+                                    df,
+                                    cutting_gap=cutting_gap,
+                                    optimization_method=optimization_method,
+                                    stock_length_options=stock_length_options,
+                                    optimize_stock_length=True
+                                )
+                                progress_bar.progress(100)
+                                elapsed = time.time() - start_time
+                                elapsed_formatted = f"{elapsed:.1f}" if elapsed % 1 != 0 else f"{int(elapsed)}"
+                                st.success(f"✅ Hoàn tất trong {elapsed_formatted} giây")
+                                st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
+                                
+                                # Lưu vào lịch sử với tên
+                                save_optimization_history(
+                                    result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method, name=history_name
+                                )
+                            except Exception as opt_err:
+                                st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
+            except Exception as e:
+                st.error(f"❌ Lỗi xử lý file: {e}")
 
-        # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân
-        st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
-        summary_df_display = summary_df.style.format({
-            'Hiệu Suất Tổng Thể': "{:.1f}%",
-            'Hiệu Suất Trung Bình': "{:.1f}%",
-            'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
-        })
-        st.dataframe(summary_df_display)
+        # Hiển thị kết quả nếu có
+        if st.session_state.result_data:
+            result_df, patterns_df, summary_df, stock_length_options, cutting_gap = st.session_state.result_data
 
-        # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân
-        st.subheader("📋 Danh Sách Mẫu Cắt")
-        patterns_df_display = patterns_df.style.format({
-            'Hiệu Suất': "{:.1f}%",
-            'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-            'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
-        })
-        st.dataframe(patterns_df_display)
+            st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
+            summary_df_display = summary_df.style.format({
+                'Hiệu Suất Tổng Thể': "{:.1f}%",
+                'Hiệu Suất Trung Bình': "{:.1f}%",
+                'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+            })
+            st.dataframe(summary_df_display)
 
-        # Đổi tên cột cho bảng chi tiết mảnh cắt
-        result_df = result_df.rename(columns={
-            'Item ID': 'Mã Mảnh',
-            'Bar Number': 'Số Thanh'
-        })
-        st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
-        st.dataframe(result_df)
+            st.subheader("📋 Danh Sách Mẫu Cắt")
+            patterns_df_display = patterns_df.style.format({
+                'Hiệu Suất': "{:.1f}%",
+                'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+                'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+            })
+            st.dataframe(patterns_df_display)
 
-        # Mô phỏng cắt thanh
-        st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
+            st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
+            result_df = result_df.rename(columns={
+                'Item ID': 'Mã Mảnh',
+                'Bar Number': 'Số Thanh'
+            })
+            st.dataframe(result_df)
 
-        # Khởi tạo biến trong session_state nếu chưa có
-        if 'current_profile' not in st.session_state:
-            st.session_state.current_profile = None
-        if 'page' not in st.session_state:
-            st.session_state.page = 0
+            st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
+            if 'current_profile' not in st.session_state:
+                st.session_state.current_profile = None
+            if 'page' not in st.session_state:
+                st.session_state.page = 0
 
-        # Chọn mã nhôm từ danh sách
-        selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
+            selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
+            if selected_profile != st.session_state.current_profile:
+                st.session_state.current_profile = selected_profile
+                st.session_state.page = 0
 
-        # Kiểm tra và reset trang nếu mã nhôm thay đổi
-        if selected_profile != st.session_state.current_profile:
-            st.session_state.current_profile = selected_profile
-            st.session_state.page = 0  # Reset về trang 1
+            filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
+            patterns_df_display = filtered.style.format({
+                'Hiệu Suất': "{:.1f}%",
+                'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+                'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+            })
+            st.dataframe(patterns_df_display)
 
-        # Lọc dữ liệu cho mã nhôm được chọn
-        filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
-
-        # Thiết lập phân trang
-        rows_per_page = 5
-        total_rows = len(filtered)
-        num_pages = (total_rows + rows_per_page - 1) // rows_per_page
-
-        # Tính chỉ số dòng hiển thị
-        start_idx = st.session_state.page * rows_per_page
-        end_idx = min(start_idx + rows_per_page, total_rows)
-        display_rows = filtered.iloc[start_idx:end_idx]
-
-        # Hiển thị dữ liệu
-        for idx, row in display_rows.iterrows():
-            st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
-            display_pattern(row, cutting_gap)
-
-        # Điều hướng trang
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.session_state.page > 0:
-                if st.button("Trang trước"):
-                    st.session_state.page -= 1
-        with col2:
-            if st.session_state.page < num_pages - 1:
-                if st.button("Trang sau"):
-                    st.session_state.page += 1
-
-        # Hiển thị thông tin trang
-        st.info(f"Đang hiển thị trang {st.session_state.page + 1}/{num_pages}")
-
-        # Tải xuống kết quả
-        output = io.BytesIO()
-        create_output_excel(output, result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
-        output.seek(0)
-        st.download_button("📥 Tải Xuống File Kết Quả Cắt Nhôm", output, "ket_qua_cat_nhom.xlsx")
+            # Tải xuống kết quả
+            output = io.BytesIO()
+            create_output_excel(output, result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
+            output.seek(0)
+            st.download_button("📥 Tải Xuống File Kết Quả Cắt Nhôm", output, "ket_qua_cat_nhom.xlsx")
 
 # Footer
 st.markdown("---")
