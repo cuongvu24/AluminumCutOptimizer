@@ -4,7 +4,7 @@ import io
 import time
 import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
-from utils import create_output_excel, create_accessory_summary, validate_input_excel
+from utils import create_output_excel, create_accessory_summary, validate_input_excel, save_optimization_history, load_optimization_history, delete_optimization_history_entry
 import uuid
 
 # Hàm hiển thị mô phỏng cắt thanh
@@ -102,6 +102,7 @@ with tab_intro:
          - **Danh Sách Mẫu Cắt**: Hiển thị chi tiết mẫu cắt cho từng thanh (kích thước thanh, mẫu cắt, hiệu suất).
          - **Bảng Chi Tiết Mảnh Cắt**: Hiển thị thông tin từng mảnh cắt (mã mảnh, chiều dài, số thanh, mã cửa).
          - **Mô Phỏng Cắt Từng Thanh**: Hiển thị trực quan cách cắt từng thanh, có thể chọn mã nhôm và điều hướng qua các trang.
+         - **Lịch Sử Tối Ưu Hóa**: Xem các lần tối ưu hóa trước, tải lại kết quả hoặc xóa lịch sử.
       5. Nhấn **"Tải Xuống File Kết Quả Cắt Nhôm"** để lưu kết quả về máy dưới dạng file Excel.
 
     ### Lưu ý khi sử dụng
@@ -160,6 +161,78 @@ with tab_phu_kien:
 # Tab Tối Ưu Cắt Nhôm
 with tab_cat_nhom:
     st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
+    
+    # Phần lịch sử tối ưu hóa
+    st.markdown("### 📜 Lịch Sử Tối Ưu Hóa")
+    history_data = load_optimization_history()
+    if history_data:
+        history_df = pd.DataFrame([
+            {
+                'ID': entry['id'],
+                'Thời Gian': entry['timestamp'],
+                'Phương Pháp Tối Ưu': entry['optimization_method'],
+                'Mã Thanh': ', '.join(entry['profile_codes']),
+                'Kích Thước Thanh': ', '.join(map(str, entry['stock_length_options'])),
+                'Khoảng Cách Cắt': entry['cutting_gap']
+            }
+            for entry in history_data
+        ])
+        st.dataframe(history_df)
+        
+        selected_history_id = st.selectbox("Chọn lịch sử để xem chi tiết", [''] + [entry['id'] for entry in history_data])
+        if selected_history_id:
+            selected_entry = next((entry for entry in history_data if entry['id'] == selected_history_id), None)
+            if selected_entry:
+                result_df = pd.DataFrame(selected_entry['result_df'])
+                patterns_df = pd.DataFrame(selected_entry['patterns_df'])
+                summary_df = pd.DataFrame(selected_entry['summary_df'])
+                stock_length_options = selected_entry['stock_length_options']
+                cutting_gap = selected_entry['cutting_gap']
+                
+                st.markdown("#### Kết Quả Lịch Sử")
+                st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
+                summary_df_display = summary_df.style.format({
+                    'Hiệu Suất Tổng Thể': "{:.1f}%",
+                    'Hiệu Suất Trung Bình': "{:.1f}%",
+                    'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+                })
+                st.dataframe(summary_df_display)
+
+                st.subheader("📋 Danh Sách Mẫu Cắt")
+                patterns_df_display = patterns_df.style.format({
+                    'Hiệu Suất': "{:.1f}%",
+                    'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
+                    'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+                })
+                st.dataframe(patterns_df_display)
+
+                st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
+                result_df = result_df.rename(columns={'Item ID': 'Mã Mảnh', 'Bar Number': 'Số Thanh'})
+                st.dataframe(result_df)
+
+                st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
+                selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique(), key=f"history_profile_{selected_history_id}")
+                filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
+                for idx, row in filtered.iterrows():
+                    st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
+                    display_pattern(row, cutting_gap)
+
+                # Tải xuống kết quả lịch sử
+                output = io.BytesIO()
+                create_output_excel(output, result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
+                output.seek(0)
+                st.download_button("📥 Tải Xuống Kết Quả Lịch Sử", output, f"ket_qua_cat_nhom_{selected_entry['timestamp'].replace(':', '-')}.xlsx")
+                
+                # Nút xóa lịch sử
+                if st.button("🗑️ Xóa Lịch Sử Này"):
+                    delete_optimization_history_entry(selected_history_id)
+                    st.success("✅ Đã xóa lịch sử!")
+                    st.experimental_rerun()
+    else:
+        st.info("ℹ️ Chưa có lịch sử tối ưu hóa.")
+
+    # Phần tối ưu hóa mới
+    st.markdown("### ✂️ Tối Ưu Hóa Mới")
     if uploaded_file:
         try:
             df = pd.read_excel(uploaded_file)
@@ -180,7 +253,7 @@ with tab_cat_nhom:
                     cutting_gap = st.number_input("Khoảng cách cắt (mm)", 1, 100, 10, 1)
 
                 with col3:
-                    optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt"])
+                    optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt", "Tối Ưu PuLP"])
 
                 # Nút tối ưu hóa
                 if st.button("🚀 Tối Ưu Hóa"):
@@ -203,6 +276,11 @@ with tab_cat_nhom:
                             elapsed_formatted = f"{elapsed:.1f}" if elapsed % 1 != 0 else f"{int(elapsed)}"
                             st.success(f"✅ Hoàn tất trong {elapsed_formatted} giây")
                             st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
+                            
+                            # Lưu vào lịch sử
+                            save_optimization_history(
+                                result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method
+                            )
                         except Exception as opt_err:
                             st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
         except Exception as e:
@@ -214,7 +292,6 @@ with tab_cat_nhom:
 
         # Đổi tên cột cho bảng tổng hợp và định dạng số thập phân
         st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
-        # Định dạng số thập phân trong bảng hiển thị, hiệu suất dưới dạng phần trăm
         summary_df_display = summary_df.style.format({
             'Hiệu Suất Tổng Thể': "{:.1f}%",
             'Hiệu Suất Trung Bình': "{:.1f}%",
@@ -224,7 +301,6 @@ with tab_cat_nhom:
 
         # Đổi tên cột cho bảng mẫu cắt và định dạng số thập phân
         st.subheader("📋 Danh Sách Mẫu Cắt")
-        # Định dạng số thập phân trong bảng hiển thị, hiệu suất dưới dạng phần trăm
         patterns_df_display = patterns_df.style.format({
             'Hiệu Suất': "{:.1f}%",
             'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
