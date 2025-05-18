@@ -8,6 +8,7 @@ from utils import create_output_excel, create_accessory_summary, validate_input_
 import uuid
 from datetime import datetime
 import threading
+import json  # Thêm import json
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
@@ -203,9 +204,10 @@ with tab_cat_nhom:
         st.markdown("### 📜 Lịch Sử Tối Ưu Hóa")
         history_data = load_optimization_history()
         if history_data:
+            # Tạo bảng lịch sử với STT thay vì ID
             history_df = pd.DataFrame([
                 {
-                    'ID': entry['id'],
+                    'STT': idx + 1,  # Số thứ tự từ 1
                     'Tên': entry.get('name', entry['timestamp']),
                     'Thời Gian': entry['timestamp'],
                     'Phương Pháp Tối Ưu': entry['optimization_method'],
@@ -213,13 +215,16 @@ with tab_cat_nhom:
                     'Kích Thước Thanh': ', '.join(map(str, entry['stock_length_options'])),
                     'Khoảng Cách Cắt': entry['cutting_gap']
                 }
-                for entry in history_data
+                for idx, entry in enumerate(history_data)
             ])
             st.dataframe(history_df, use_container_width=True)
             
-            selected_history_id = st.selectbox("Chọn lịch sử để xem chi tiết", [''] + [entry['id'] for entry in history_data])
-            if selected_history_id:
-                selected_entry = next((entry for entry in history_data if entry['id'] == selected_history_id), None)
+            # Chọn lịch sử bằng tên
+            history_names = [''] + [entry.get('name', entry['timestamp']) for entry in history_data]
+            selected_history_name = st.selectbox("Chọn lịch sử để xem chi tiết", history_names)
+            if selected_history_name:
+                # Tìm entry dựa trên tên
+                selected_entry = next((entry for entry in history_data if entry.get('name', entry['timestamp']) == selected_history_name), None)
                 if selected_entry:
                     result_df = pd.DataFrame(selected_entry['result_df'])
                     patterns_df = pd.DataFrame(selected_entry['patterns_df'])
@@ -229,14 +234,15 @@ with tab_cat_nhom:
                     
                     # Cho phép chỉnh sửa tên lịch sử
                     current_name = selected_entry.get('name', selected_entry['timestamp'])
-                    new_name = st.text_input("Đặt tên cho lịch sử này", value=current_name, key=f"name_{selected_history_id}")
+                    new_name = st.text_input("Đặt tên cho lịch sử này", value=current_name, key=f"name_{selected_entry['id']}")
                     if new_name != current_name:
-                        history_data = [entry for entry in history_data if entry['id'] != selected_history_id]
+                        history_data = [entry for entry in history_data if entry['id'] != selected_entry['id']]
                         selected_entry['name'] = new_name
                         history_data.append(selected_entry)
                         with open("history.json", 'w', encoding='utf-8') as f:
                             json.dump(history_data, f, ensure_ascii=False, indent=2)
                         st.success("✅ Đã cập nhật tên lịch sử!")
+                        st.rerun()  # Làm mới giao diện để hiển thị tên mới
                     
                     st.markdown("#### Kết Quả Lịch Sử")
                     st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
@@ -260,12 +266,12 @@ with tab_cat_nhom:
                     st.dataframe(result_df, use_container_width=True)
 
                     st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
-                    selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique(), key=f"history_profile_{selected_history_id}")
+                    selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique(), key=f"history_profile_{selected_entry['id']}")
                     filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
                     rows_per_page = 5
                     total_rows = len(filtered)
                     num_pages = (total_rows + rows_per_page - 1) // rows_per_page
-                    page_key = f"history_page_{selected_history_id}"
+                    page_key = f"history_page_{selected_entry['id']}"
                     if page_key not in st.session_state:
                         st.session_state[page_key] = 0
 
@@ -280,11 +286,11 @@ with tab_cat_nhom:
                     col1, col2 = st.columns(2)
                     with col1:
                         if st.session_state[page_key] > 0:
-                            if st.button("Trang trước", key=f"prev_{selected_history_id}"):
+                            if st.button("Trang trước", key=f"prev_{selected_entry['id']}"):
                                 st.session_state[page_key] -= 1
                     with col2:
                         if st.session_state[page_key] < num_pages - 1:
-                            if st.button("Trang sau", key=f"next_{selected_history_id}"):
+                            if st.button("Trang sau", key=f"next_{selected_entry['id']}"):
                                 st.session_state[page_key] += 1
 
                     st.info(f"Đang hiển thị trang {st.session_state[page_key] + 1}/{num_pages}")
@@ -297,7 +303,7 @@ with tab_cat_nhom:
                     
                     # Nút xóa lịch sử
                     if st.button("🗑️ Xóa Lịch Sử Này"):
-                        delete_optimization_history_entry(selected_history_id)
+                        delete_optimization_history_entry(selected_entry['id'])
                         st.success("✅ Đã xóa lịch sử!")
                         st.rerun()
         else:
