@@ -7,6 +7,7 @@ from cutting_optimizer import optimize_cutting
 from utils import create_output_excel, create_accessory_summary, validate_input_excel, save_optimization_history, load_optimization_history, delete_optimization_history_entry
 import uuid
 from datetime import datetime
+import threading
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
@@ -44,19 +45,27 @@ def display_pattern(row, cutting_gap):
     unique_key = f"plot_{row['Số Thanh']}_{uuid.uuid4()}"
     st.plotly_chart(fig, use_container_width=True, key=unique_key)
 
+# Hàm đếm ngược thời gian
+def countdown_placeholder(placeholder, max_time):
+    for i in range(max_time, -1, -1):
+        placeholder.markdown(f"⏳ **Đang tối ưu hóa... Còn {i} giây**")
+        time.sleep(1)
+
 # Cấu hình giao diện
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
-# CSS để đồng nhất khổ bảng
+# CSS để đồng nhất khổ bảng và thông báo
 st.markdown("""
 <style>
-    .stDataFrame {
+    .stDataFrame, .stAlert {
         width: 100%;
         max-width: 1200px;
         border: 1px solid #ddd;
         border-radius: 5px;
         overflow-x: auto;
+        margin: 10px auto;
+        padding: 10px;
     }
     .stDataFrame table {
         width: 100%;
@@ -65,6 +74,9 @@ st.markdown("""
     .stDataFrame th, .stDataFrame td {
         padding: 8px;
         text-align: left;
+    }
+    .stAlert > div {
+        padding: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -132,7 +144,7 @@ with tab_intro:
     - Đảm bảo file nhập liệu đúng định dạng theo mẫu được cung cấp, nếu không ứng dụng sẽ báo lỗi.
     - Kích thước thanh và khoảng cách cắt phải là số dương, hợp lý với thực tế sản xuất.
     - Khi sử dụng chế độ "Tối Ưu Linh Hoạt", nên nhập nhiều kích thước thanh để đạt hiệu quả tối ưu nhất.
-    - Phương pháp "Tối Ưu PuLP" có thể mất nhiều thời gian với dữ liệu lớn, hãy cân nhắc số lượng mẫu cắt tối đa.
+    - Phương pháp "Tối Ưu PuLP" có thể mất nhiều thời gian với dữ liệu lớn, hãy cân nhắc chia nhỏ dữ liệu hoặc dùng phương pháp khác.
     """)
 
 # Tab Tải Mẫu Nhập
@@ -182,7 +194,7 @@ with tab_phu_kien:
 
 # Tab Tối Ưu Cắt Nhôm
 with tab_cat_nhom:
-    st.subheader("Tối Ưu Hóa Cắt Nhôm")
+    st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
     
     # Tạo sub-tabs trong Tối Ưu Cắt Nhôm
     subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa Mới", "Lịch Sử Tối Ưu Hóa"])
@@ -288,13 +300,13 @@ with tab_cat_nhom:
                     if st.button("🗑️ Xóa Lịch Sử Này"):
                         delete_optimization_history_entry(selected_history_id)
                         st.success("✅ Đã xóa lịch sử!")
-                        st.rerun()  # Sửa từ experimental_rerun thành rerun
+                        st.rerun()
         else:
             st.info("ℹ️ Chưa có lịch sử tối ưu hóa.")
 
     # Sub-tab Tối Ưu Hóa Mới
     with subtab_new:
-        st.markdown("### ✂️ Tối Ưu Hóa")
+        st.markdown("### ✂️ Tối Ưu Hóa Mới")
         if uploaded_file:
             try:
                 df = pd.read_excel(uploaded_file)
@@ -328,7 +340,11 @@ with tab_cat_nhom:
                         else:
                             try:
                                 start_time = time.time()
-                                progress_bar = st.progress(0)
+                                max_time = 30  # Thời gian tối đa 30 giây (khớp với PULP_CBC_CMD)
+                                placeholder = st.empty()
+                                countdown_thread = threading.Thread(target=countdown_placeholder, args=(placeholder, max_time))
+                                countdown_thread.start()
+
                                 result_df, patterns_df, summary_df = optimize_cutting(
                                     df,
                                     cutting_gap=cutting_gap,
@@ -336,7 +352,9 @@ with tab_cat_nhom:
                                     stock_length_options=stock_length_options,
                                     optimize_stock_length=True
                                 )
-                                progress_bar.progress(100)
+
+                                countdown_thread.join()  # Đợi luồng đếm ngược hoàn tất
+                                placeholder.empty()  # Xóa placeholder
                                 elapsed = time.time() - start_time
                                 elapsed_formatted = f"{elapsed:.1f}" if elapsed % 1 != 0 else f"{int(elapsed)}"
                                 st.success(f"✅ Hoàn tất trong {elapsed_formatted} giây")
@@ -347,6 +365,7 @@ with tab_cat_nhom:
                                     result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method, name=history_name
                                 )
                             except Exception as opt_err:
+                                placeholder.empty()
                                 st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
             except Exception as e:
                 st.error(f"❌ Lỗi xử lý file: {e}")
