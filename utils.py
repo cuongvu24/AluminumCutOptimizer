@@ -174,7 +174,7 @@ def save_optimization_history(result_df, patterns_df, summary_df, stock_length_o
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     history_entry = {
         'id': str(uuid.uuid4()),
-        'name': name or timestamp,  # Sử dụng tên người dùng cung cấp hoặc timestamp
+        'name': name or timestamp,
         'timestamp': timestamp,
         'optimization_method': optimization_method,
         'stock_length_options': stock_length_options,
