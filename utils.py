@@ -157,7 +157,7 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
         })
         params_df.to_excel(writer, sheet_name="Tham Số", index=False)
 
-def save_optimization_history(result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method):
+def save_optimization_history(result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method, name=None):
     """Lưu kết quả tối ưu hóa vào file JSON."""
     history_file = "history.json"
     history_data = []
@@ -174,6 +174,7 @@ def save_optimization_history(result_df, patterns_df, summary_df, stock_length_o
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     history_entry = {
         'id': str(uuid.uuid4()),
+        'name': name or timestamp,  # Sử dụng tên người dùng cung cấp hoặc timestamp
         'timestamp': timestamp,
         'optimization_method': optimization_method,
         'stock_length_options': stock_length_options,
