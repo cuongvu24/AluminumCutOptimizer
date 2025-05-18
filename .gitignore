@@ -1,10 +1,33 @@
+# Python bytecode và file nhị phân
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Biến môi trường và môi trường ảo
 .env
 .venv
+
+# File hệ thống macOS
 .DS_Store
+
+# File cơ sở dữ liệu
 *.sqlite3
-*.log
 *.db
+
+# File log
+*.log
+
+# File lịch sử tối ưu hóa
+history.json
+
+# File Excel tạm thời
+*.xlsx
+*.xls
+
+# Thư mục lưu trữ file tải lên (nếu có)
+uploads/
+
+# File cấu hình IDE
+.idea/
+.vscode/
