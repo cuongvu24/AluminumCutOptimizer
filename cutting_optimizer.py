@@ -3,6 +3,7 @@ import streamlit as st
 import io
 import openpyxl
 from openpyxl.styles import PatternFill
+from pulp import LpMinimize, LpProblem, LpVariable, lpSum, PULP_CBC_CMD
 
 def validate_input_excel(df):
     required_columns = ["Mã Thanh", "Chiều Dài", "Số Lượng"]
@@ -46,24 +47,124 @@ def create_accessory_summary(input_df, output_stream):
 
     return grouped
 
+def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
+    """Tối ưu hóa cắt nhôm bằng PuLP."""
+    lengths = profile_data['Chiều Dài'].values
+    quantities = [1] * len(lengths)  # Mỗi mục đã được mở rộng theo số lượng
+    item_ids = profile_data['Item ID'].values
+    profile_code = profile_data['Mã Thanh'].iloc[0]
+    has_door_code = "Mã Cửa" in profile_data.columns
+
+    # Tạo danh sách mẫu cắt khả thi
+    patterns = []
+    for stock_length in stock_length_options:
+        # Tạo tất cả mẫu cắt khả thi cho stock_length
+        def generate_patterns(current_pattern, remaining_length, index):
+            if index >= len(lengths):
+                if current_pattern:
+                    patterns.append((current_pattern[:], stock_length))
+                return
+            length = lengths[index]
+            if length <= remaining_length - cutting_gap:
+                current_pattern.append(index)
+                generate_patterns(current_pattern, remaining_length - length - cutting_gap, index + 1)
+                current_pattern.pop()
+            generate_patterns(current_pattern, remaining_length, index + 1)
+
+        generate_patterns([], stock_length, 0)
+
+    # Tạo mô hình PuLP
+    prob = LpProblem(f"Cutting_Stock_{profile_code}", LpMinimize)
+    
+    # Biến quyết định: số lần sử dụng mỗi mẫu cắt
+    pattern_vars = LpVariable.dicts("Pattern", range(len(patterns)), lowBound=0, cat='Integer')
+    
+    # Hàm mục tiêu: tối thiểu hóa số thanh sử dụng
+    prob += lpSum(pattern_vars[i] for i in range(len(patterns)))
+    
+    # Ràng buộc: đáp ứng số lượng yêu cầu cho mỗi chiều dài
+    for j in range(len(lengths)):
+        prob += lpSum(
+            sum(1 for idx in patterns[i][0] if idx == j) * pattern_vars[i]
+            for i in range(len(patterns))
+        ) >= quantities[j], f"Demand_{j}"
+    
+    # Giải bài toán
+    prob.solve(PULP_CBC_CMD(msg=False))
+    
+    # Xử lý kết quả
+    patterns_data = []
+    results = []
+    bar_number = 1
+    stock_lengths_used = []
+    remaining_lengths = []
+    
+    for i in range(len(patterns)):
+        if pattern_vars[i].varValue and pattern_vars[i].varValue > 0:
+            pattern_indices, stock_length = patterns[i]
+            used_length = sum(lengths[idx] for idx in pattern_indices)
+            remaining = stock_length - used_length - (len(pattern_indices) - 1) * cutting_gap
+            efficiency = used_length / stock_length if stock_length > 0 else 0
+            
+            pattern_rounded = [round(lengths[idx], 1) if lengths[idx] % 1 != 0 else int(lengths[idx]) for idx in pattern_indices]
+            patterns_data.append({
+                'Mã Thanh': profile_code,
+                'Số Thanh': bar_number,
+                'Chiều Dài Thanh': stock_length,
+                'Chiều Dài Sử Dụng': used_length,
+                'Chiều Dài Còn Lại': remaining,
+                'Hiệu Suất': efficiency,
+                'Mẫu Cắt': '+'.join(map(str, pattern_rounded)),
+                'Số Đoạn Cắt': len(pattern_indices)
+            })
+            stock_lengths_used.append(stock_length)
+            remaining_lengths.append(remaining)
+            
+            # Gán mảnh cắt
+            for idx in pattern_indices:
+                result_item = {
+                    'Mã Thanh': profile_code,
+                    'Item ID': item_ids[idx],
+                    'Chiều Dài': lengths[idx],
+                    'Số Thanh': bar_number
+                }
+                if has_door_code:
+                    result_item['Mã Cửa'] = profile_data.iloc[idx]['Mã Cửa']
+                results.append(result_item)
+            
+            bar_number += 1
+    
+    patterns_df = pd.DataFrame(patterns_data)
+    result_df = pd.DataFrame(results)
+    
+    # Tạo summary_df
+    total_bars = len(patterns_data)
+    total_length_needed = sum(lengths)
+    total_length_used = sum(p['Chiều Dài Thanh'] for p in patterns_data)
+    avg_efficiency = sum(p['Hiệu Suất'] for p in patterns_data) / len(patterns_data) if patterns_data else 0
+    overall_efficiency = (total_length_needed / total_length_used if total_length_used > 0 else 0) * 100
+    waste = total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap
+
+    summary_df = pd.DataFrame([{
+        'Mã Thanh': profile_code,
+        'Tổng Đoạn Cắt': len(lengths),
+        'Số Thanh Sử Dụng': total_bars,
+        'Tổng Chiều Dài Cần (mm)': total_length_needed,
+        'Tổng Chiều Dài Nguyên Liệu (mm)': total_length_used,
+        'Phế Liệu (mm)': waste,
+        'Hiệu Suất Tổng Thể': overall_efficiency,
+        'Hiệu Suất Trung Bình': avg_efficiency
+    }])
+    
+    return result_df, patterns_df, summary_df
+
 def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options, optimize_stock_length):
     """
-    Hàm tối ưu hóa cắt nhôm, hỗ trợ ba chế độ tối ưu:
+    Hàm tối ưu hóa cắt nhôm, hỗ trợ bốn chế độ tối ưu:
     - "Tối Ưu Hiệu Suất Cao Nhất": Chọn một kích thước thanh tốt nhất cho từng mã nhôm để tối ưu hiệu suất.
-    - "Tối Ưu Số Lượng Thanh": Chọn một kích thước thanh tốt nhất cho từng mã nhôm để tối ưu số lượng thanh.
-    - "Tối Ưu Linh Hoạt": Sử dụng nhiều kích thước thanh để giảm phế liệu cho từng mã nhôm.
-    
-    Tham số:
-    - df: DataFrame chứa dữ liệu đầu vào (Mã Thanh, Chiều Dài, Số Lượng, [Mã Cửa])
-    - cutting_gap: Khoảng cách cắt (mm)
-    - optimization_method: Phương pháp tối ưu ("Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt")
-    - stock_length_options: Danh sách kích thước thanh có sẵn (mm)
-    - optimize_stock_length: Có tối ưu hóa kích thước thanh hay không (không sử dụng trong phiên bản này)
-    
-    Trả về:
-    - result_df: DataFrame chi tiết mảnh cắt (bao gồm cột Mã Cửa)
-    - patterns_df: DataFrame mẫu cắt
-    - summary_df: DataFrame tổng hợp
+    - "Tối Ưu Số Lượng Thanh": Chọn một kích thước thanh tốt nhất để giảm số lượng thanh.
+    - "Tối Ưu Linh Hoạt": Sử dụng nhiều kích thước thanh để giảm phế liệu.
+    - "Tối Ưu PuLP": Sử dụng lập trình tuyến tính với PuLP để tối ưu chính xác.
     """
     # Kiểm tra danh sách kích thước thanh
     if stock_length_options is None or not stock_length_options:
@@ -81,7 +182,6 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 'Chiều Dài': row['Chiều Dài'],
                 'Item ID': f"{row['Mã Thanh']}_{i+1}"
             }
-            # Thêm cột "Mã Cửa" nếu có
             if has_door_code:
                 item['Mã Cửa'] = row['Mã Cửa']
             expanded_data.append(item)
@@ -97,12 +197,20 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         lengths = profile_data['Chiều Dài'].values
         lengths = sorted(lengths, reverse=True)  # Sắp xếp giảm dần để tối ưu
 
+        if optimization_method == "Tối Ưu PuLP":
+            # Sử dụng PuLP để tối ưu
+            result_df, patterns_df, summary_df = optimize_with_pulp(profile_data, cutting_gap, stock_length_options)
+            all_results.extend(result_df.to_dict('records'))
+            all_patterns.extend(patterns_df.to_dict('records'))
+            all_summaries.extend(summary_df.to_dict('records'))
+            continue
+
         patterns = []
         remaining_lengths = []
-        stock_lengths_used = []  # Lưu kích thước thanh được sử dụng cho từng thanh
+        stock_lengths_used = []
 
         if optimization_method == "Tối Ưu Linh Hoạt":
-            # Chế độ linh hoạt: Sử dụng nhiều kích thước thanh cho mỗi mã nhôm
+            # Chế độ linh hoạt: Sử dụng nhiều kích thước thanh
             for length in lengths:
                 best_fit = None
                 best_remaining = float('inf')
@@ -117,34 +225,30 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                             best_remaining = temp_remaining
                             best_pattern_idx = i
 
-                # Thử tạo thanh mới với tất cả kích thước thanh
+                # Thử tạo thanh mới
                 for stock_length in stock_length_options:
                     temp_remaining = stock_length - length - cutting_gap
                     if temp_remaining >= 0 and temp_remaining < best_remaining:
                         best_remaining = temp_remaining
                         best_fit = [length]
                         best_stock_length = stock_length
-                        best_pattern_idx = -1  # Đánh dấu để tạo thanh mới
+                        best_pattern_idx = -1
 
-                # Gán mảnh cắt vào thanh
                 if best_pattern_idx >= 0:
-                    # Gán vào thanh hiện có
                     patterns[best_pattern_idx].append(length)
                     remaining_lengths[best_pattern_idx] = best_remaining
                 else:
-                    # Tạo thanh mới
                     patterns.append(best_fit)
                     remaining_lengths.append(best_remaining)
                     stock_lengths_used.append(best_stock_length)
         else:
-            # Chế độ cũ: Chọn một kích thước thanh tốt nhất cho mã nhôm hiện tại
+            # Chế độ cũ: Chọn một kích thước thanh tốt nhất
             best_patterns = []
             best_remaining_lengths = []
             best_stock_length = stock_length_options[0]
             best_efficiency = 0
             best_bar_count = float('inf')
 
-            # Thử từng kích thước thanh có sẵn
             for current_stock_length in stock_length_options:
                 temp_patterns = []
                 temp_remaining_lengths = []
@@ -182,7 +286,6 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
 
             patterns = best_patterns
             remaining_lengths = best_remaining_lengths
-            # Với chế độ cũ, tất cả thanh của mã nhôm này sử dụng cùng một kích thước
             stock_lengths_used = [best_stock_length] * len(patterns)
 
         # Tạo dữ liệu mẫu cắt
@@ -191,9 +294,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         for pattern, remaining, stock_length in zip(patterns, remaining_lengths, stock_lengths_used):
             used_length = sum(pattern)
             efficiency = used_length / stock_length if stock_length > 0 else 0
-            # Đảm bảo hiệu suất nằm trong khoảng 0-100%
-            efficiency = max(0, min(100, efficiency * 100))  # Nhân 100 và giới hạn trong [0, 100]
-            # Làm tròn các số trong pattern trước khi tạo chuỗi Cutting Pattern
+            efficiency = max(0, min(100, efficiency * 100))
             pattern_rounded = [round(x, 1) if x % 1 != 0 else int(x) for x in pattern]
             pattern_data.append({
                 'Mã Thanh': profile_code,
@@ -206,7 +307,6 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 'Số Đoạn Cắt': len(pattern)
             })
 
-            # Gán mảnh cắt vào thanh
             for length in pattern:
                 unassigned_items = profile_data[(profile_data['Chiều Dài'] == length) &
                                                (~profile_data['Item ID'].isin([r.get('Item ID') for r in all_results]))]
@@ -218,7 +318,6 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                         'Chiều Dài': length,
                         'Số Thanh': bar_number
                     }
-                    # Thêm cột "Mã Cửa" nếu có
                     if has_door_code:
                         result_item['Mã Cửa'] = profile_data.loc[item_idx, 'Mã Cửa']
                     all_results.append(result_item)
@@ -228,13 +327,11 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
 
         all_patterns.extend(pattern_data)
 
-        # Tạo dữ liệu tổng hợp
         total_bars = len(patterns)
         total_length_needed = sum(lengths)
         total_length_used = sum(pattern['Chiều Dài Thanh'] for pattern in pattern_data)
         avg_efficiency = sum(p['Hiệu Suất'] for p in pattern_data) / len(pattern_data) if pattern_data else 0
         overall_efficiency = (total_length_needed / total_length_used if total_length_used > 0 else 0) * 100
-        # Đảm bảo hiệu suất nằm trong khoảng 0-100%
         overall_efficiency = max(0, min(100, overall_efficiency))
         avg_efficiency = max(0, min(100, avg_efficiency))
         waste = total_length_used - total_length_needed - (len(lengths) - total_bars) * cutting_gap
@@ -250,15 +347,12 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
             'Hiệu Suất Trung Bình': avg_efficiency
         })
 
-    # Tạo DataFrame kết quả
     patterns_df = pd.DataFrame(all_patterns)
     summary_df = pd.DataFrame(all_summaries)
     result_df = pd.DataFrame(all_results)
 
-    # Sắp xếp và định dạng
     if not patterns_df.empty:
         patterns_df = patterns_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
-        # Định dạng số thập phân cho các cột khác
         patterns_df['Chiều Dài Sử Dụng'] = patterns_df['Chiều Dài Sử Dụng'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
         patterns_df['Chiều Dài Còn Lại'] = patterns_df['Chiều Dài Còn Lại'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
