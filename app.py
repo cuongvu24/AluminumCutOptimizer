@@ -125,15 +125,15 @@ with tab_intro:
       1. Tải file cắt nhôm (đã nhập liệu theo mẫu) bằng cách kéo thả hoặc chọn file từ máy.
       2. Nhập các thông số cần thiết:
          - **Kích thước thanh**: Nhập các kích thước thanh có sẵn (mm), phân cách bằng dấu phẩy (ví dụ: 5800, 6000).
-         - **Khoảng cách cắt**: Nhập khoảng cách giữa các mảnh cắt trên thanh (mm), thường do lưỡi cắt tạo ra (mặc định: 10mm, có thể điều chỉnh từ 1-100mm). Khoảng cách này ảnh hưởng đến tính toán phế liệu và hiệu suất.
+         - **Khoảng cách cắt**: Nhập khoảng cách giữa các mảnh cắt trên thanh (mm), thường do lưỡi cắt tạo ra (mặc định: 10mm, có thể điều chỉnh từ 1-100mm).
          - **Phương pháp tối ưu**:
-           - **Tối Ưu Hiệu Suất Cao Nhất**: Chọn kích thước thanh để tối đa hóa hiệu suất sử dụng nguyên liệu.
-           - **Tối Ưu Số Lượng Thanh**: Chọn kích thước thanh để sử dụng ít thanh nhất.
-           - **Tối Ưu Linh Hoạt**: Sử dụng nhiều kích thước thanh để giảm thiểu phế liệu.
+           - **Tối Ưu Hiệu Suất Cao Nhất**: Tối đa hóa hiệu suất sử dụng nguyên liệu.
+           - **Tối Ưu Số Lượng Thanh**: Giảm số lượng thanh cần thiết.
+           - **Tối Ưu Linh Hoạt**: Sử dụng nhiều kích thước thanh để giảm phế liệu.
            - **Tối Ưu PuLP**: Sử dụng lập trình tuyến tính với PuLP (chuyển sang Tối Ưu Linh Hoạt nếu dữ liệu lớn).
       3. Nhấn nút **"Tối Ưu Hóa"** để chạy tính toán.
       4. Xem kết quả:
-         - **Bảng Tổng Hợp Hiệu Suất**: Hiển thị hiệu suất tổng thể, số lượng thanh, và phế liệu.
+         - **Bảng Tổng Hợp Hiệu Suất**: Hiển thị hiệu suất tổng thể, số lượng thanh, phế liệu.
          - **Danh Sách Mẫu Cắt**: Hiển thị chi tiết mẫu cắt cho từng thanh.
          - **Bảng Chi Tiết Mảnh Cắt**: Hiển thị thông tin từng mảnh cắt.
          - **Mô Phỏng Cắt Từng Thanh**: Hiển thị trực quan cách cắt từng thanh.
@@ -239,7 +239,7 @@ with tab_cat_nhom:
                         with open("history.json", 'w', encoding='utf-8') as f:
                             json.dump(history_data, f, ensure_ascii=False, indent=2)
                         st.success("✅ Đã cập nhật tên lịch sử!")
-                        st.rerun()  # Làm mới giao diện để hiển thị tên mới
+                        st.rerun()
                     
                     st.markdown("#### Kết Quả Lịch Sử")
                     st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
@@ -331,7 +331,8 @@ with tab_cat_nhom:
                         optimization_method = st.selectbox("Phương pháp tối ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh", "Tối Ưu Linh Hoạt", "Tối Ưu PuLP"])
 
                     # Thêm trường nhập tên cho lần tối ưu hóa
-                    history_name = st.text_input("Tên cho lần tối ưu hóa này", value=f"Tối ưu hóa {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                    default_name = f"Tối ưu hóa {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    history_name = st.text_input("Tên cho lần tối ưu hóa này", value=default_name)
 
                     # Nút tối ưu hóa
                     if st.button("🚀 Tối Ưu Hóa"):
@@ -363,8 +364,9 @@ with tab_cat_nhom:
                                 st.session_state.result_data = (result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
                                 
                                 # Lưu vào lịch sử với tên
+                                history_name = history_name.strip() if history_name.strip() else default_name
                                 save_optimization_history(
-                                    result_df, patterns_df, summary خصوصی_df, stock_length_options, cutting_gap, optimization_method, name=history_name
+                                    result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method, name=history_name
                                 )
                                 st.rerun()  # Làm mới giao diện để hiển thị lịch sử mới
                             except Exception as opt_err:
