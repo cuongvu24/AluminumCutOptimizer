@@ -54,13 +54,15 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
     item_ids = profile_data['Item ID'].values
     profile_code = profile_data['Mã Thanh'].iloc[0]
     has_door_code = "Mã Cửa" in profile_data.columns
-    max_cuts_per_pattern = 8  # Giảm số đoạn cắt tối đa mỗi mẫu
+    max_cuts_per_pattern = 8  # Số đoạn cắt tối đa mỗi mẫu
     total_items = len(lengths)
     max_patterns = min(10000 + 50 * total_items, 20000)  # Giới hạn động dựa trên số mục
+    max_stock_length = max(stock_length_options)
 
-    # Kiểm tra dữ liệu đầu vào
-    if total_items > 100:
-        st.warning(f"Dữ liệu cho {profile_code} có {total_items} mục. Tối ưu hóa PuLP có thể chậm hoặc bỏ sót mẫu. Hãy thử phương pháp 'Tối Ưu Linh Hoạt' hoặc chia nhỏ dữ liệu.")
+    # Kiểm tra các đoạn cắt vượt khổ lớn nhất
+    oversized_lengths = [l for l in lengths if l > max_stock_length]
+    if oversized_lengths:
+        st.warning(f"Đoạn cắt {oversized_lengths} cho {profile_code} vượt khổ thanh lớn nhất ({max_stock_length}mm). Những đoạn này sẽ bị bỏ qua trong PuLP.")
 
     # Tạo danh sách mẫu cắt khả thi
     patterns = []
@@ -73,14 +75,23 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
                 return
             if index >= len(lengths):
                 if current_pattern:
-                    # Kiểm tra hiệu suất mẫu cắt
+                    # Kiểm tra tổng chiều dài các đoạn cắt
                     used_length = sum(lengths[idx] for idx in current_pattern)
-                    efficiency = used_length / stock_length if stock_length > 0 else 0
+                    total_required = used_length + (len(current_pattern) - 1) * cutting_gap
+                    if total_required > max_stock_length:
+                        return  # Bỏ qua mẫu cắt vượt khổ lớn nhất
+                    selected_stock_length = stock_length
+                    if total_required > stock_length:
+                        # Chọn khổ lớn nhất khả thi nếu vượt khổ hiện tại
+                        selected_stock_length = max([sl for sl in stock_length_options if sl >= total_required], default=max_stock_length)
+                    efficiency = used_length / selected_stock_length if selected_stock_length > 0 else 0
                     if efficiency >= 0.7:  # Chỉ giữ mẫu có hiệu suất >= 70%
-                        patterns.append((current_pattern[:], stock_length))
+                        patterns.append((current_pattern[:], selected_stock_length))
                         pattern_count += 1
                 return
             length = lengths[index]
+            if length > max_stock_length:
+                return  # Bỏ qua đoạn cắt vượt khổ lớn nhất
             if length <= remaining_length - cutting_gap:
                 current_pattern.append(index)
                 generate_patterns(current_pattern, remaining_length - length - cutting_gap, index + 1)
@@ -94,7 +105,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
 
     # Kiểm tra nếu không có mẫu cắt nào được tạo
     if not patterns:
-        st.error(f"Không tạo được mẫu cắt nào cho {profile_code}. Vui lòng kiểm tra dữ liệu hoặc tăng giới hạn mẫu cắt.")
+        st.error(f"Không tạo được mẫu cắt nào cho {profile_code}. Vui lòng kiểm tra dữ liệu hoặc tăng khổ thanh lớn nhất.")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     # Tạo mô hình PuLP
@@ -139,7 +150,8 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
                 'Chiều Dài Còn Lại': remaining,
                 'Hiệu Suất': efficiency,
                 'Mẫu Cắt': '+'.join(map(str, pattern_rounded)),
-                'Số Đoạn Cắt': len(pattern_indices)
+                'Số Đoạn Cắt': len(pattern_indices),
+                'Ghi Chú': ''
             })
             stock_lengths_used.append(stock_length)
             remaining_lengths.append(remaining)
@@ -199,16 +211,24 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
 
     # Mở rộng dữ liệu theo số lượng
     expanded_data = []
+    oversized_warnings = []
+    max_stock_length = max(stock_length_options)
     for idx, row in df.iterrows():
+        length = row['Chiều Dài']
+        if length > max_stock_length:
+            oversized_warnings.append(f"Đoạn cắt {length}mm cho {row['Mã Thanh']} vượt khổ thanh lớn nhất ({max_stock_length}mm).")
         for i in range(int(row['Số Lượng'])):
             item = {
                 'Mã Thanh': row['Mã Thanh'],
-                'Chiều Dài': row['Chiều Dài'],
+                'Chiều Dài': length,
                 'Item ID': f"{row['Mã Thanh']}_{i+1}"
             }
             if has_door_code:
                 item['Mã Cửa'] = row['Mã Cửa']
             expanded_data.append(item)
+    if oversized_warnings:
+        st.warning(" ".join(oversized_warnings) + " Kết quả có thể không tối ưu cho các đoạn này.")
+
     expanded_df = pd.DataFrame(expanded_data)
 
     profile_codes = expanded_df['Mã Thanh'].unique()
@@ -224,6 +244,11 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
             profile_data = expanded_df[expanded_df['Mã Thanh'] == profile_code].copy()
             lengths = profile_data['Chiều Dài'].values
             lengths = sorted(lengths, reverse=True)  # Sắp xếp giảm dần để tối ưu
+
+            # Tự động chuyển sang Tối Ưu Linh Hoạt nếu số mục > 100
+            if optimization_method == "Tối Ưu PuLP" and len(lengths) > 100:
+                st.warning(f"Dữ liệu cho {profile_code} có {len(lengths)} mục, quá lớn cho PuLP. Đã chuyển sang phương pháp Tối Ưu Linh Hoạt.")
+                optimization_method = "Tối Ưu Linh Hoạt"
 
             if optimization_method == "Tối Ưu PuLP":
                 # Sử dụng PuLP để tối ưu
@@ -250,26 +275,39 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                     for i, (pattern, remaining) in enumerate(zip(patterns, remaining_lengths)):
                         if length <= remaining - cutting_gap:
                             temp_remaining = remaining - (length + cutting_gap)
-                            if temp_remaining < best_remaining:
+                            if temp_remaining >= 0 and temp_remaining < best_remaining:
                                 best_remaining = temp_remaining
                                 best_pattern_idx = i
 
                     # Thử tạo thanh mới
-                    for stock_length in stock_length_options:
+                    for stock_length in sorted(stock_length_options):  # Sắp xếp để thử khổ nhỏ trước
                         temp_remaining = stock_length - length - cutting_gap
                         if temp_remaining >= 0 and temp_remaining < best_remaining:
                             best_remaining = temp_remaining
                             best_fit = [length]
                             best_stock_length = stock_length
                             best_pattern_idx = -1
+                        # Nếu vượt khổ, chọn khổ lớn nhất khả thi
+                        elif temp_remaining < 0:
+                            required_length = length + cutting_gap
+                            selected_stock_length = max([sl for sl in stock_length_options if sl >= required_length], default=max_stock_length)
+                            temp_remaining = selected_stock_length - length - cutting_gap
+                            if temp_remaining >= 0 and temp_remaining < best_remaining:
+                                best_remaining = temp_remaining
+                                best_fit = [length]
+                                best_stock_length = selected_stock_length
+                                best_pattern_idx = -1
 
                     if best_pattern_idx >= 0:
                         patterns[best_pattern_idx].append(length)
                         remaining_lengths[best_pattern_idx] = best_remaining
                     else:
-                        patterns.append(best_fit)
-                        remaining_lengths.append(best_remaining)
-                        stock_lengths_used.append(best_stock_length)
+                        if best_fit:
+                            patterns.append(best_fit)
+                            remaining_lengths.append(best_remaining)
+                            stock_lengths_used.append(best_stock_length)
+                            if best_stock_length < length + cutting_gap:
+                                patterns_data[-1]['Ghi Chú'] = f"Đoạn cắt {length}mm vượt khổ lớn nhất ({max_stock_length}mm)"
             else:
                 # Chế độ cũ: Chọn một kích thước thanh tốt nhất
                 best_patterns = []
@@ -281,6 +319,7 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 for current_stock_length in stock_length_options:
                     temp_patterns = []
                     temp_remaining_lengths = []
+                    temp_stock_lengths = []
 
                     for length in lengths:
                         added = False
@@ -288,14 +327,21 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                             if length <= remaining - cutting_gap:
                                 temp_patterns[i].append(length)
                                 temp_remaining_lengths[i] -= (length + cutting_gap)
-                                added = True
-                                break
+                                if temp_remaining_lengths[i] >= 0:
+                                    added = True
+                                    break
                         if not added:
+                            # Kiểm tra nếu vượt khổ
+                            required_length = length + cutting_gap
+                            selected_stock_length = current_stock_length
+                            if required_length > current_stock_length:
+                                selected_stock_length = max([sl for sl in stock_length_options if sl >= required_length], default=max_stock_length)
                             temp_patterns.append([length])
-                            temp_remaining_lengths.append(current_stock_length - length - cutting_gap)
+                            temp_remaining_lengths.append(selected_stock_length - length - cutting_gap)
+                            temp_stock_lengths.append(selected_stock_length)
 
                     total_used_length = sum(sum(pattern) for pattern in temp_patterns)
-                    total_stock_length = current_stock_length * len(temp_patterns)
+                    total_stock_length = sum(sl for sl in temp_stock_lengths)
                     current_efficiency = total_used_length / total_stock_length if total_stock_length > 0 else 0
 
                     if optimization_method == "Tối Ưu Hiệu Suất Cao Nhất":
@@ -325,6 +371,9 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                 efficiency = used_length / stock_length if stock_length > 0 else 0
                 efficiency = max(0, min(100, efficiency * 100))
                 pattern_rounded = [round(x, 1) if x % 1 != 0 else int(x) for x in pattern]
+                note = ''
+                if any(length > max_stock_length for length in pattern):
+                    note = f"Có đoạn cắt vượt khổ lớn nhất ({max_stock_length}mm)"
                 pattern_data.append({
                     'Mã Thanh': profile_code,
                     'Số Thanh': bar_number,
@@ -333,7 +382,8 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
                     'Chiều Dài Còn Lại': remaining,
                     'Hiệu Suất': efficiency,
                     'Mẫu Cắt': '+'.join(map(str, pattern_rounded)),
-                    'Số Đoạn Cắt': len(pattern)
+                    'Số Đoạn Cắt': len(pattern),
+                    'Ghi Chú': note
                 })
 
                 for length in pattern:
