@@ -48,13 +48,19 @@ def create_accessory_summary(input_df, output_stream):
     return grouped
 
 def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
-    """Tối ưu hóa cắt nhôm bằng PuLP với giới hạn số mẫu cắt."""
+    """Tối ưu hóa cắt nhôm bằng PuLP với giới hạn số mẫu cắt và số đoạn cắt tối đa."""
     lengths = profile_data['Chiều Dài'].values
     quantities = [1] * len(lengths)  # Mỗi mục đã được mở rộng theo số lượng
     item_ids = profile_data['Item ID'].values
     profile_code = profile_data['Mã Thanh'].iloc[0]
     has_door_code = "Mã Cửa" in profile_data.columns
-    max_patterns = 5000  # Tăng giới hạn để bao quát tất cả mã thanh
+    max_patterns = 10000  # Tăng giới hạn mẫu cắt
+    max_cuts_per_pattern = 10  # Giới hạn số đoạn cắt tối đa trong mỗi mẫu
+
+    # Kiểm tra dữ liệu đầu vào
+    total_items = len(lengths)
+    if total_items > 100:
+        st.warning(f"Dữ liệu cho {profile_code} có {total_items} mục. Tối ưu hóa PuLP có thể chậm hoặc bỏ sót mẫu. Xem xét dùng phương pháp 'Tối Ưu Linh Hoạt'.")
 
     # Tạo danh sách mẫu cắt khả thi
     patterns = []
@@ -63,7 +69,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
     for stock_length in stock_length_options:
         def generate_patterns(current_pattern, remaining_length, index):
             nonlocal pattern_count
-            if pattern_count >= max_patterns:
+            if pattern_count >= max_patterns or len(current_pattern) >= max_cuts_per_pattern:
                 return
             if index >= len(lengths):
                 if current_pattern:
@@ -79,7 +85,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
 
         generate_patterns([], stock_length, 0)
         if pattern_count >= max_patterns:
-            st.warning(f"Cảnh báo: Đạt giới hạn {max_patterns} mẫu cắt cho {profile_code}. Một số mẫu có thể bị bỏ sót.")
+            st.warning(f"Đạt giới hạn {max_patterns} mẫu cắt cho {profile_code}. Một số mẫu có thể bị bỏ sót. Xem xét giảm số lượng dữ liệu hoặc dùng phương pháp khác.")
             break
 
     # Kiểm tra nếu không có mẫu cắt nào được tạo
