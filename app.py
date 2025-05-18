@@ -55,12 +55,11 @@ def countdown_placeholder(placeholder, max_time):
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
-# CSS để đồng nhất khổ bảng và thông báo
+# CSS để bảng và thông báo full chiều rộng
 st.markdown("""
 <style>
     .stDataFrame, .stAlert {
         width: 100%;
-        max-width: 1200px;
         border: 1px solid #ddd;
         border-radius: 5px;
         overflow-x: auto;
@@ -130,7 +129,7 @@ with tab_intro:
            - **Tối Ưu Hiệu Suất Cao Nhất**: Chọn kích thước thanh để tối đa hóa hiệu suất sử dụng nguyên liệu (tỷ lệ giữa chiều dài sử dụng và chiều dài thanh).
            - **Tối Ưu Số Lượng Thanh**: Chọn kích thước thanh để sử dụng ít thanh nhất, giảm số lượng thanh cần thiết.
            - **Tối Ưu Linh Hoạt**: Sử dụng nhiều kích thước thanh khác nhau (ví dụ: 5800mm và 6000mm) để giảm thiểu phế liệu, linh hoạt hơn trong việc cắt.
-           - **Tối Ưu PuLP**: Sử dụng lập trình tuyến tính với PuLP để tối ưu chính xác (có thể mất thời gian với dữ liệu lớn).
+           - **Tối Ưu PuLP**: Sử dụng lập trình tuyến tính với PuLP để tối ưu chính xác (chuyển sang Tối Ưu Linh Hoạt nếu dữ liệu lớn).
       3. Nhấn nút **"Tối Ưu Hóa"** để chạy tính toán.
       4. Xem kết quả:
          - **Bảng Tổng Hợp Hiệu Suất**: Hiển thị hiệu suất tổng thể, số lượng thanh, và phế liệu của từng mã nhôm.
@@ -144,7 +143,7 @@ with tab_intro:
     - Đảm bảo file nhập liệu đúng định dạng theo mẫu được cung cấp, nếu không ứng dụng sẽ báo lỗi.
     - Kích thước thanh và khoảng cách cắt phải là số dương, hợp lý với thực tế sản xuất.
     - Khi sử dụng chế độ "Tối Ưu Linh Hoạt", nên nhập nhiều kích thước thanh để đạt hiệu quả tối ưu nhất.
-    - Phương pháp "Tối Ưu PuLP" có thể mất nhiều thời gian với dữ liệu lớn, hãy cân nhắc chia nhỏ dữ liệu hoặc dùng phương pháp khác.
+    - Phương pháp "Tối Ưu PuLP" sẽ tự động chuyển sang "Tối Ưu Linh Hoạt" nếu dữ liệu quá lớn (>100 mục mỗi mã thanh).
     """)
 
 # Tab Tải Mẫu Nhập
@@ -340,7 +339,7 @@ with tab_cat_nhom:
                         else:
                             try:
                                 start_time = time.time()
-                                max_time = 30  # Thời gian tối đa 30 giây (khớp với PULP_CBC_CMD)
+                                max_time = 30  # Thời gian tối đa 30 giây
                                 placeholder = st.empty()
                                 countdown_thread = threading.Thread(target=countdown_placeholder, args=(placeholder, max_time))
                                 countdown_thread.start()
@@ -353,8 +352,8 @@ with tab_cat_nhom:
                                     optimize_stock_length=True
                                 )
 
-                                countdown_thread.join()  # Đợi luồng đếm ngược hoàn tất
-                                placeholder.empty()  # Xóa placeholder
+                                countdown_thread.join()
+                                placeholder.empty()
                                 elapsed = time.time() - start_time
                                 elapsed_formatted = f"{elapsed:.1f}" if elapsed % 1 != 0 else f"{int(elapsed)}"
                                 st.success(f"✅ Hoàn tất trong {elapsed_formatted} giây")
