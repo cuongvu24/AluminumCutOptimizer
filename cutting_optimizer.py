@@ -48,21 +48,27 @@ def create_accessory_summary(input_df, output_stream):
     return grouped
 
 def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
-    """Tối ưu hóa cắt nhôm bằng PuLP."""
+    """Tối ưu hóa cắt nhôm bằng PuLP với giới hạn số mẫu cắt."""
     lengths = profile_data['Chiều Dài'].values
     quantities = [1] * len(lengths)  # Mỗi mục đã được mở rộng theo số lượng
     item_ids = profile_data['Item ID'].values
     profile_code = profile_data['Mã Thanh'].iloc[0]
     has_door_code = "Mã Cửa" in profile_data.columns
+    max_patterns = 1000  # Giới hạn số mẫu cắt để cải thiện hiệu suất
 
     # Tạo danh sách mẫu cắt khả thi
     patterns = []
+    pattern_count = 0
+
     for stock_length in stock_length_options:
-        # Tạo tất cả mẫu cắt khả thi cho stock_length
         def generate_patterns(current_pattern, remaining_length, index):
+            nonlocal pattern_count
+            if pattern_count >= max_patterns:
+                return
             if index >= len(lengths):
                 if current_pattern:
                     patterns.append((current_pattern[:], stock_length))
+                    pattern_count += 1
                 return
             length = lengths[index]
             if length <= remaining_length - cutting_gap:
@@ -72,6 +78,8 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
             generate_patterns(current_pattern, remaining_length, index + 1)
 
         generate_patterns([], stock_length, 0)
+        if pattern_count >= max_patterns:
+            break
 
     # Tạo mô hình PuLP
     prob = LpProblem(f"Cutting_Stock_{profile_code}", LpMinimize)
@@ -90,7 +98,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
         ) >= quantities[j], f"Demand_{j}"
     
     # Giải bài toán
-    prob.solve(PULP_CBC_CMD(msg=False))
+    prob.solve(PULP_CBC_CMD(msg=False, timeLimit=30))  # Giới hạn thời gian giải 30 giây
     
     # Xử lý kết quả
     patterns_data = []
@@ -361,6 +369,6 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         summary_df['Phế Liệu (mm)'] = summary_df['Phế Liệu (mm)'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not result_df.empty:
-        result_df = result_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
+        result%edx_df = result_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
 
     return result_df, patterns_df, summary_df
