@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
 from utils import create_output_excel, create_accessory_summary, validate_input_excel, save_optimization_history, load_optimization_history, delete_optimization_history_entry
 import uuid
+from datetime import datetime  # Thêm dòng này để nhập module datetime
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
@@ -160,7 +161,7 @@ with tab_phu_kien:
 
 # Tab Tối Ưu Cắt Nhôm
 with tab_cat_nhom:
-    st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
+    st.subheader("Tối Ưu Hóa Cắt Nhôm")
     
     # Tạo sub-tabs trong Tối Ưu Cắt Nhôm
     subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa Mới", "Lịch Sử Tối Ưu Hóa"])
@@ -252,7 +253,7 @@ with tab_cat_nhom:
 
     # Sub-tab Tối Ưu Hóa Mới
     with subtab_new:
-        st.markdown("### ✂️ Tối Ưu Hóa Mới")
+        st.markdown("### ✂️ Tối Ưu Hóa")
         if uploaded_file:
             try:
                 df = pd.read_excel(uploaded_file)
@@ -308,6 +309,8 @@ with tab_cat_nhom:
                                 st.error(f"❌ Lỗi tối ưu hóa: {opt_err}")
             except Exception as e:
                 st.error(f"❌ Lỗi xử lý file: {e}")
+        else:
+            st.info("Vui lòng tải lên tệp Excel để bắt đầu tối ưu hóa.")
 
         # Hiển thị kết quả nếu có
         if st.session_state.result_data:
