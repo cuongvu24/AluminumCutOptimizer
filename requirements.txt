@@ -3,3 +3,4 @@ pandas
 openpyxl
 plotly
 pulp
+streamlit>=1.10.0 pandas openpyxl plotly pulp tweepy
