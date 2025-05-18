@@ -3,6 +3,10 @@ import streamlit as st
 import io
 import openpyxl
 from openpyxl.styles import PatternFill
+import json
+import os
+import uuid
+from datetime import datetime
 
 def validate_input_excel(df):
     required_columns = ["Mã Thanh", "Chiều Dài", "Số Lượng"]
@@ -152,3 +156,60 @@ def create_output_excel(output_stream, result_df, patterns_df, summary_df, stock
             'Giá Trị': [', '.join(map(str, stock_length_options)), cutting_gap]
         })
         params_df.to_excel(writer, sheet_name="Tham Số", index=False)
+
+def save_optimization_history(result_df, patterns_df, summary_df, stock_length_options, cutting_gap, optimization_method):
+    """Lưu kết quả tối ưu hóa vào file JSON."""
+    history_file = "history.json"
+    history_data = []
+
+    # Đọc dữ liệu hiện có nếu file tồn tại
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                history_data = json.load(f)
+        except:
+            history_data = []
+
+    # Chuẩn bị dữ liệu để lưu
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    history_entry = {
+        'id': str(uuid.uuid4()),
+        'timestamp': timestamp,
+        'optimization_method': optimization_method,
+        'stock_length_options': stock_length_options,
+        'cutting_gap': cutting_gap,
+        'profile_codes': summary_df['Mã Thanh'].unique().tolist(),
+        'result_df': result_df.to_dict(),
+        'patterns_df': patterns_df.to_dict(),
+        'summary_df': summary_df.to_dict()
+    }
+
+    # Thêm vào danh sách và lưu lại
+    history_data.append(history_entry)
+    with open(history_file, 'w', encoding='utf-8') as f:
+        json.dump(history_data, f, ensure_ascii=False, indent=2)
+
+def load_optimization_history():
+    """Đọc lịch sử tối ưu hóa từ file JSON."""
+    history_file = "history.json"
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                history_data = json.load(f)
+            return history_data
+        except:
+            return []
+    return []
+
+def delete_optimization_history_entry(entry_id):
+    """Xóa một mục lịch sử theo ID."""
+    history_file = "history.json"
+    if os.path.exists(history_file):
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                history_data = json.load(f)
+            history_data = [entry for entry in history_data if entry['id'] != entry_id]
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(history_data, f, ensure_ascii=False, indent=2)
+        except:
+            pass
