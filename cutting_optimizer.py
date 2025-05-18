@@ -104,7 +104,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
     patterns_data = []
     results = []
     bar_number = 1
-    stock_lengths_used = cytology[]
+    stock_lengths_used = []  # Sửa lỗi từ cytology[] thành danh sách rỗng
     remaining_lengths = []
     
     for i in range(len(patterns)):
