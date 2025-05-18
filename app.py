@@ -292,6 +292,8 @@ with tab_cat_nhom:
 
                     st.info(f"Đang hiển thị trang {st.session_state[page_key] + 1}/{num_pages}")
 
+                   
+
                     # Tải xuống kết quả lịch sử
                     output = io.BytesIO()
                     create_output_excel(output, result_df, patterns_df, summary_df, stock_length_options, cutting_gap)
