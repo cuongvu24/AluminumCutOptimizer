@@ -104,7 +104,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
     patterns_data = []
     results = []
     bar_number = 1
-    stock_lengths_used = []
+    stock_lengths_used = cytology[]
     remaining_lengths = []
     
     for i in range(len(patterns)):
@@ -369,6 +369,6 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         summary_df['Phế Liệu (mm)'] = summary_df['Phế Liệu (mm)'].apply(lambda x: round(x, 1) if x % 1 != 0 else int(x))
 
     if not result_df.empty:
-        result%edx_df = result_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
+        result_df = result_df.sort_values(['Mã Thanh', 'Số Thanh']).reset_index(drop=True)
 
     return result_df, patterns_df, summary_df
