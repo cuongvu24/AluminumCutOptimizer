@@ -120,7 +120,7 @@ with tab_intro:
       3. Nhấn **"Tải Xuống File Tổng Hợp Phụ Kiện"** để lưu kết quả về máy dưới dạng file Excel.
 
     #### 3. ✂️ Tối Ưu Cắt Nhôm
-    - **Chức năng**: Tối ưu hóa việc cắt nhôm để giảm phế liệu và tăng hiệu suất, hỗ trợ nhiều phương pháp tối ưu và tùy chỉnh khoảng cách cắt.
+variation: - **Chức năng**: Tối ưu hóa việc cắt nhôm để giảm phế liệu và tăng hiệu suất, hỗ trợ nhiều phương pháp tối ưu và tùy chỉnh khoảng cách cắt.
     - **Hướng dẫn sử dụng**:
       1. Tải file cắt nhôm (đã nhập liệu theo mẫu) bằng cách kéo thả hoặc chọn file từ máy.
       2. Nhập các thông số cần thiết:
