@@ -54,7 +54,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
     item_ids = profile_data['Item ID'].values
     profile_code = profile_data['Mã Thanh'].iloc[0]
     has_door_code = "Mã Cửa" in profile_data.columns
-    max_patterns = 1000  # Giới hạn số mẫu cắt để cải thiện hiệu suất
+    max_patterns = 5000  # Tăng giới hạn để bao quát tất cả mã thanh
 
     # Tạo danh sách mẫu cắt khả thi
     patterns = []
@@ -79,7 +79,13 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
 
         generate_patterns([], stock_length, 0)
         if pattern_count >= max_patterns:
+            st.warning(f"Cảnh báo: Đạt giới hạn {max_patterns} mẫu cắt cho {profile_code}. Một số mẫu có thể bị bỏ sót.")
             break
+
+    # Kiểm tra nếu không có mẫu cắt nào được tạo
+    if not patterns:
+        st.error(f"Không tạo được mẫu cắt nào cho {profile_code}. Vui lòng kiểm tra dữ liệu hoặc tăng max_patterns.")
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     # Tạo mô hình PuLP
     prob = LpProblem(f"Cutting_Stock_{profile_code}", LpMinimize)
@@ -104,7 +110,7 @@ def optimize_with_pulp(profile_data, cutting_gap, stock_length_options):
     patterns_data = []
     results = []
     bar_number = 1
-    stock_lengths_used = []  # Sửa lỗi từ cytology[] thành danh sách rỗng
+    stock_lengths_used = []
     remaining_lengths = []
     
     for i in range(len(patterns)):
@@ -208,9 +214,10 @@ def optimize_cutting(df, cutting_gap, optimization_method, stock_length_options,
         if optimization_method == "Tối Ưu PuLP":
             # Sử dụng PuLP để tối ưu
             result_df, patterns_df, summary_df = optimize_with_pulp(profile_data, cutting_gap, stock_length_options)
-            all_results.extend(result_df.to_dict('records'))
-            all_patterns.extend(patterns_df.to_dict('records'))
-            all_summaries.extend(summary_df.to_dict('records'))
+            if not result_df.empty:
+                all_results.extend(result_df.to_dict('records'))
+                all_patterns.extend(patterns_df.to_dict('records'))
+                all_summaries.extend(summary_df.to_dict('records'))
             continue
 
         patterns = []
