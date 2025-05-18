@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
 from utils import create_output_excel, create_accessory_summary, validate_input_excel, save_optimization_history, load_optimization_history, delete_optimization_history_entry
 import uuid
-from datetime import datetime  # Thêm dòng này để nhập module datetime
+from datetime import datetime
 
 # Hàm hiển thị mô phỏng cắt thanh
 def display_pattern(row, cutting_gap):
@@ -47,6 +47,27 @@ def display_pattern(row, cutting_gap):
 # Cấu hình giao diện
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
+
+# CSS để đồng nhất khổ bảng
+st.markdown("""
+<style>
+    .stDataFrame {
+        width: 100%;
+        max-width: 1200px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        overflow-x: auto;
+    }
+    .stDataFrame table {
+        width: 100%;
+        table-layout: auto;
+    }
+    .stDataFrame th, .stDataFrame td {
+        padding: 8px;
+        text-align: left;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Giới thiệu ngắn gọn ngay sau tiêu đề
 st.markdown("""
@@ -154,14 +175,14 @@ with tab_phu_kien:
             summary_df = create_accessory_summary(acc_df, output)
             output.seek(0)
             st.success("✅ Tổng hợp thành công!")
-            st.dataframe(summary_df)
+            st.dataframe(summary_df, use_container_width=True)
             st.download_button("📥 Tải Xuống File Tổng Hợp Phụ Kiện", output, "tong_hop_phu_kien.xlsx")
         except Exception as e:
             st.warning("⚠️ File không phù hợp hoặc thiếu cột cần thiết.")
 
 # Tab Tối Ưu Cắt Nhôm
 with tab_cat_nhom:
-    st.subheader("Tối Ưu Hóa Cắt Nhôm")
+    st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
     
     # Tạo sub-tabs trong Tối Ưu Cắt Nhôm
     subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa Mới", "Lịch Sử Tối Ưu Hóa"])
@@ -174,7 +195,7 @@ with tab_cat_nhom:
             history_df = pd.DataFrame([
                 {
                     'ID': entry['id'],
-                    'Tên': entry.get('name', entry['timestamp']),  # Sử dụng tên nếu có, nếu không thì dùng timestamp
+                    'Tên': entry.get('name', entry['timestamp']),
                     'Thời Gian': entry['timestamp'],
                     'Phương Pháp Tối Ưu': entry['optimization_method'],
                     'Mã Thanh': ', '.join(entry['profile_codes']),
@@ -183,7 +204,7 @@ with tab_cat_nhom:
                 }
                 for entry in history_data
             ])
-            st.dataframe(history_df)
+            st.dataframe(history_df, use_container_width=True)
             
             selected_history_id = st.selectbox("Chọn lịch sử để xem chi tiết", [''] + [entry['id'] for entry in history_data])
             if selected_history_id:
@@ -213,29 +234,49 @@ with tab_cat_nhom:
                         'Hiệu Suất Trung Bình': "{:.1f}%",
                         'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
                     })
-                    st.dataframe(summary_df_display)
+                    st.dataframe(summary_df_display, use_container_width=True)
 
                     st.subheader("📋 Danh Sách Mẫu Cắt")
                     patterns_df_display = patterns_df.style.format({
                         'Hiệu Suất': "{:.1f}%",
                         'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-                        'Thời Gian Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
+                        'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
                     })
-                    st.dataframe(patterns_df_display)
+                    st.dataframe(patterns_df_display, use_container_width=True)
 
                     st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
                     result_df = result_df.rename(columns={'Item ID': 'Mã Mảnh', 'Bar Number': 'Số Thanh'})
-                    st.dataframe(result_df)
+                    st.dataframe(result_df, use_container_width=True)
 
                     st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
                     selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique(), key=f"history_profile_{selected_history_id}")
                     filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
-                    patterns_df_display = filtered.style.format({
-                        'Hiệu Suất': "{:.1f}%",
-                        'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-                        'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
-                    })
-                    st.dataframe(patterns_df_display)
+                    rows_per_page = 5
+                    total_rows = len(filtered)
+                    num_pages = (total_rows + rows_per_page - 1) // rows_per_page
+                    page_key = f"history_page_{selected_history_id}"
+                    if page_key not in st.session_state:
+                        st.session_state[page_key] = 0
+
+                    start_idx = st.session_state[page_key] * rows_per_page
+                    end_idx = min(start_idx + rows_per_page, total_rows)
+                    display_rows = filtered.iloc[start_idx:end_idx]
+
+                    for idx, row in display_rows.iterrows():
+                        st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
+                        display_pattern(row, cutting_gap)
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.session_state[page_key] > 0:
+                            if st.button("Trang trước", key=f"prev_{selected_history_id}"):
+                                st.session_state[page_key] -= 1
+                    with col2:
+                        if st.session_state[page_key] < num_pages - 1:
+                            if st.button("Trang sau", key=f"next_{selected_history_id}"):
+                                st.session_state[page_key] += 1
+
+                    st.info(f"Đang hiển thị trang {st.session_state[page_key] + 1}/{num_pages}")
 
                     # Tải xuống kết quả lịch sử
                     output = io.BytesIO()
@@ -247,13 +288,13 @@ with tab_cat_nhom:
                     if st.button("🗑️ Xóa Lịch Sử Này"):
                         delete_optimization_history_entry(selected_history_id)
                         st.success("✅ Đã xóa lịch sử!")
-                        st.experimental_rerun()
+                        st.rerun()  # Sửa từ experimental_rerun thành rerun
         else:
             st.info("ℹ️ Chưa có lịch sử tối ưu hóa.")
 
     # Sub-tab Tối Ưu Hóa Mới
     with subtab_new:
-        st.markdown("### ✂️ Tối Ưu Hóa")
+        st.markdown("### ✂️ Tối Ưu Hóa Mới")
         if uploaded_file:
             try:
                 df = pd.read_excel(uploaded_file)
@@ -262,7 +303,7 @@ with tab_cat_nhom:
                     st.error(message)
                 else:
                     st.success("✅ Dữ liệu nhôm hợp lệ!")
-                    st.dataframe(df)
+                    st.dataframe(df, use_container_width=True)
 
                     col1, col2, col3 = st.columns(3)
 
@@ -322,7 +363,7 @@ with tab_cat_nhom:
                 'Hiệu Suất Trung Bình': "{:.1f}%",
                 'Phế Liệu (mm)': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
             })
-            st.dataframe(summary_df_display)
+            st.dataframe(summary_df_display, use_container_width=True)
 
             st.subheader("📋 Danh Sách Mẫu Cắt")
             patterns_df_display = patterns_df.style.format({
@@ -330,14 +371,14 @@ with tab_cat_nhom:
                 'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
                 'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
             })
-            st.dataframe(patterns_df_display)
+            st.dataframe(patterns_df_display, use_container_width=True)
 
             st.subheader("📄 Bảng Chi Tiết Mảnh Cắt")
             result_df = result_df.rename(columns={
                 'Item ID': 'Mã Mảnh',
                 'Bar Number': 'Số Thanh'
             })
-            st.dataframe(result_df)
+            st.dataframe(result_df, use_container_width=True)
 
             st.subheader("📊 Mô Phỏng Cắt Từng Thanh")
             if 'current_profile' not in st.session_state:
@@ -351,12 +392,29 @@ with tab_cat_nhom:
                 st.session_state.page = 0
 
             filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
-            patterns_df_display = filtered.style.format({
-                'Hiệu Suất': "{:.1f}%",
-                'Chiều Dài Sử Dụng': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}",
-                'Chiều Dài Còn Lại': lambda x: f"{x:.1f}" if isinstance(x, float) and x % 1 != 0 else f"{int(x)}"
-            })
-            st.dataframe(patterns_df_display)
+            rows_per_page = 5
+            total_rows = len(filtered)
+            num_pages = (total_rows + rows_per_page - 1) // rows_per_page
+
+            start_idx = st.session_state.page * rows_per_page
+            end_idx = min(start_idx + rows_per_page, total_rows)
+            display_rows = filtered.iloc[start_idx:end_idx]
+
+            for idx, row in display_rows.iterrows():
+                st.markdown(f"**🔹 #{row['Số Thanh']} | {selected_profile} | {int(row['Chiều Dài Thanh'])}mm**")
+                display_pattern(row, cutting_gap)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.session_state.page > 0:
+                    if st.button("Trang trước"):
+                        st.session_state.page -= 1
+            with col2:
+                if st.session_state.page < num_pages - 1:
+                    if st.button("Trang sau"):
+                        st.session_state.page += 1
+
+            st.info(f"Đang hiển thị trang {st.session_state.page + 1}/{num_pages}")
 
             # Tải xuống kết quả
             output = io.BytesIO()
