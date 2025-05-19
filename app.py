@@ -193,7 +193,7 @@ with tab_phu_kien:
 
 # Tab Tối Ưu Cắt Nhôm
 with tab_cat_nhom:
-    st.subheader("✂️ Tối Ưu Hóa Cắt Nhôm")
+    st.subheader("Tối Ưu Hóa Cắt Nhôm")
     
     # Tạo sub-tabs trong Tối Ưu Cắt Nhôm
     subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa Mới", "Lịch Sử Tối Ưu Hóa"])
@@ -308,7 +308,7 @@ with tab_cat_nhom:
 
     # Sub-tab Tối Ưu Hóa Mới
     with subtab_new:
-        st.markdown("### ✂️ Tối Ưu Hóa Mới")
+        st.markdown("### ✂️ Tối Ưu Hóa")
         if uploaded_file:
             try:
                 df = pd.read_excel(uploaded_file)
