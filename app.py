@@ -92,7 +92,7 @@ if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
 # Các tab chính
-tab_intro, tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "Tối Ưu Cắt"])
+tab_intro, tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "✂️ Tối Ưu Cắt"])
 
 # Tab Giới Thiệu
 with tab_intro:
@@ -308,7 +308,7 @@ with tab_cat_nhom:
 
     # Sub-tab Tối Ưu Hóa Mới
     with subtab_new:
-        st.markdown("### ✂️ Tối Ưu Hóa")
+        st.markdown("### 📊 Tối Ưu Hóa")
         if uploaded_file:
             try:
                 df = pd.read_excel(uploaded_file)
