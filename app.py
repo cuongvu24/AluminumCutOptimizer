@@ -193,10 +193,10 @@ with tab_phu_kien:
 
 # Tab Tối Ưu Cắt Nhôm
 with tab_cat_nhom:
-    st.subheader("Tối Ưu Hóa Cắt Nhôm")
+    st.subheader("Tối Ưu Hóa Cắt")
     
     # Tạo sub-tabs trong Tối Ưu Cắt Nhôm
-    subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa Mới", "Lịch Sử Tối Ưu Hóa"])
+    subtab_new, subtab_history = st.tabs(["Tối Ưu Hóa", "Lịch Sử Tối Ưu Hóa"])
     
     # Sub-tab Lịch Sử Tối Ưu Hóa
     with subtab_history:
