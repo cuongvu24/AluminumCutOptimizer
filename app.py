@@ -92,7 +92,7 @@ if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
 # Các tab chính
-tab_intro, tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"])
+tab_intro, tab_upload, tab_phu_kien, tab_cat_nhom = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "Tối Ưu Cắt"])
 
 # Tab Giới Thiệu
 with tab_intro:
