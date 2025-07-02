@@ -6,26 +6,26 @@ from datetime import datetime
 from openpyxl.styles import PatternFill
 
 def validate_input_excel(df):
-    """Kiểm tra file nhập nhôm"""
-    required = ["Mã Thanh", "Chiều Dài", "Số Lượng"]
-    missing = [col for col in required if col not in df.columns]
-    if missing:
-        return False, f"Thiếu cột: {', '.join(missing)}"
+    df.columns = df.columns.str.strip().str.title()
+    df.rename(columns={
+        "Mã Thanh": "Profile Code",
+        "Chiều Dài": "Length",
+        "Số Lượng": "Quantity"
+    }, inplace=True)
 
-    try:
-        df['Chiều Dài'] = pd.to_numeric(df['Chiều Dài'])
-        df['Số Lượng'] = pd.to_numeric(df['Số Lượng'])
-    except:
-        return False, "Chiều Dài & Số Lượng phải là số"
+    for col in ["Profile Code", "Length", "Quantity"]:
+        if col not in df.columns:
+            return False, f"Thiếu cột {col}!"
 
-    if (df['Chiều Dài'] <= 0).any():
-        return False, "Chiều Dài phải > 0"
-    if (df['Số Lượng'] <= 0).any():
-        return False, "Số Lượng phải > 0"
-    if df['Mã Thanh'].isnull().any():
-        return False, "Mã Thanh không được để trống"
+    df['Length'] = pd.to_numeric(df['Length'], errors='coerce')
+    df['Quantity'] = pd.to_numeric(df['Quantity'], errors='coerce')
 
-    return True, "Hợp lệ"
+    if df['Length'].isnull().any():
+        return False, "Chiều Dài phải là số"
+    if df['Quantity'].isnull().any():
+        return False, "Số Lượng phải là số"
+
+    return True, "Tệp hợp lệ"
 
 def create_accessory_summary(df, stream):
     required = ['Mã phụ kiện', 'Tên phụ phiện', 'Đơn vị tính', 'Số lượng']
