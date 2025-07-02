@@ -219,3 +219,8 @@ with tab_cut:
         create_output_excel(out, result_df, patterns_df, summary_df, stock_lengths, gap)
         out.seek(0)
         st.download_button("📥 Tải File Kết Quả", out, "ket_qua_cat_nhom.xlsx")
+
+# Footer
+st.markdown("---")
+st.markdown("Mọi thắc mắc xin liên hệ Zalo 0977 487 639")
+st.markdown("Ứng dụng hỗ trợ sản xuất cửa © 2025")
