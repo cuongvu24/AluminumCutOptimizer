@@ -168,8 +168,3 @@ with tab_cut:
         create_output_excel(out, result_df, patterns_df, summary_df, stock_lengths, gap)
         out.seek(0)
         st.download_button("📥 Tải File Kết Quả", out, "ket_qua_cat_nhom.xlsx")
-
----
-
-**✅ Bạn chỉ cần copy, thay `cutting_optimizer` và `utils` cho phù hợp.**  
-Muốn tôi đóng gói **trọn bộ `utils.py` mới**, tôi gửi kèm luôn nhé? 🚀
