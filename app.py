@@ -56,6 +56,57 @@ if 'result_data' not in st.session_state:
 
 tab_intro, tab_upload, tab_pk, tab_cut = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu", "📦 Phụ Kiện", "✂️ Tối Ưu Cắt"])
 
+# ============== Tab Giới Thiệu Và Hướng Dẫn Sử Dụng ==============
+with tab_intro:
+    st.subheader("📖 Giới Thiệu và Hướng Dẫn Sử Dụng")
+    st.markdown("""
+    ### Giới thiệu
+    **Phần mềm Hỗ Trợ Sản Xuất Cửa** là một công cụ hỗ trợ sản xuất cửa nhôm, giúp tối ưu hóa quy trình cắt nhôm và quản lý phụ kiện. Ứng dụng được thiết kế để giảm thiểu phế liệu, tiết kiệm thời gian, và tăng hiệu quả sản xuất thông qua các tính năng thông minh và dễ sử dụng.
+
+    ### Hướng dẫn sử dụng các chức năng
+
+    #### 1. 📁 Tải Mẫu Nhập
+    - **Chức năng**: Cung cấp các mẫu nhập liệu chuẩn để người dùng nhập dữ liệu cho việc tối ưu hóa cắt nhôm và tổng hợp phụ kiện.
+    - **Hướng dẫn sử dụng**:
+      1. Nhấn vào nút **"Tải mẫu cắt nhôm"** hoặc **"Tải mẫu phụ kiện"** để tải file mẫu về máy.
+      2. Mở file mẫu bằng phần mềm Excel và nhập dữ liệu theo đúng định dạng cột:
+         - **Mẫu Cắt Nhôm**: Bao gồm các cột `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (không bắt buộc).
+         - **Mẫu Phụ Kiện**: Bao gồm các cột `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`.
+      3. Lưu file và sử dụng ở các tab tương ứng (Tổng Hợp Phụ Kiện hoặc Tối Ưu Cắt Nhôm).
+
+    #### 2. 📦 Tổng Hợp Phụ Kiện
+    - **Chức năng**: Tổng hợp số lượng phụ kiện cần thiết dựa trên file danh sách phụ kiện mà người dùng tải lên.
+    - **Hướng dẫn sử dụng**:
+      1. Tải file phụ kiện (đã nhập liệu theo mẫu) bằng cách kéo thả hoặc chọn file từ máy.
+      2. Ứng dụng sẽ tự động tổng hợp số lượng theo từng loại phụ kiện và hiển thị bảng kết quả.
+      3. Nhấn **"Tải Xuống File Tổng Hợp Phụ Kiện"** để lưu kết quả về máy dưới dạng file Excel.
+
+    #### 3. ✂️ Tối Ưu Cắt Nhôm
+    - **Chức năng**: Tối ưu hóa việc cắt nhôm để giảm phế liệu và tăng hiệu suất, hỗ trợ nhiều phương pháp tối ưu và tùy chỉnh khoảng cách cắt.
+    - **Hướng dẫn sử dụng**:
+      1. Tải file cắt nhôm (đã nhập liệu theo mẫu) bằng cách kéo thả hoặc chọn file từ máy.
+      2. Nhập các thông số cần thiết:
+         - **Kích thước thanh**: Nhập các kích thước thanh có sẵn (mm), phân cách bằng dấu phẩy (ví dụ: 5800, 6000).
+         - **Khoảng cách cắt**: Nhập khoảng cách giữa các mảnh cắt trên thanh (mm), thường do lưỡi cắt tạo ra (mặc định: 10mm, có thể điều chỉnh từ 1-100mm). Khoảng cách này ảnh hưởng đến tính toán phế liệu và hiệu suất.
+         - **Phương pháp tối ưu**:
+           - **Tối Ưu Hiệu Suất Cao Nhất**: Chọn kích thước thanh để tối đa hóa hiệu suất sử dụng nguyên liệu.
+           - **Tối Ưu Số Lượng Thanh**: Chọn kích thước thanh để sử dụng ít thanh nhất.
+           - **Tối Ưu Linh Hoạt**: Sử dụng nhiều kích thước thanh để giảm thiểu phế liệu.
+           - **Tối Ưu PuLP**: Sử dụng lập trình tuyến tính với PuLP (chuyển sang Tối Ưu Linh Hoạt nếu dữ liệu lớn).
+      3. Nhấn nút **"Tối Ưu Hóa"** để chạy tính toán.
+      4. Xem kết quả:
+         - **Bảng Tổng Hợp Hiệu Suất**: Hiển thị hiệu suất tổng thể, số lượng thanh, và phế liệu.
+         - **Danh Sách Mẫu Cắt**: Hiển thị chi tiết mẫu cắt cho từng thanh.
+         - **Bảng Chi Tiết Mảnh Cắt**: Hiển thị thông tin từng mảnh cắt.
+         - **Mô Phỏng Cắt Từng Thanh**: Hiển thị trực quan cách cắt từng thanh.
+         - **Lịch Sử Tối Ưu Hóa**: Xem, đổi tên, hoặc xóa các lần tối ưu hóa trước.
+      5. Nhấn **"Tải Xuống File Kết Quả Cắt Nhôm"** để lưu kết quả.
+
+    ### Lưu ý khi sử dụng
+    - Đảm bảo file nhập liệu đúng định dạng theo mẫu.
+    - Kích thước thanh và khoảng cách cắt phải là số dương.
+    - Phương pháp "Tối Ưu PuLP" sẽ tự động chuyển sang "Tối Ưu Linh Hoạt" nếu dữ liệu quá lớn (>100 mục mỗi mã thanh).
+    """)
 # ============== Tab Tải Mẫu ==============
 with tab_upload:
     st.header("📁 Tải Mẫu Nhập")
