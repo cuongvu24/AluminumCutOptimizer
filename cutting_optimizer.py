@@ -142,4 +142,4 @@ def optimize_cutting(input_data, stock_length, cutting_gap,
     result_df = pd.DataFrame(all_results)
     unassigned_df = pd.concat(unassigned_total) if unassigned_total else pd.DataFrame()
 
-    return result_df, patterns_df, summary_df, unassigned_df
+    return result_df, patterns_df, summary_df
