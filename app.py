@@ -4,22 +4,12 @@ import io
 import time
 import plotly.graph_objects as go
 from cutting_optimizer import optimize_cutting
-from utils import (
-    create_output_excel, 
-    create_accessory_summary, 
-    validate_input_excel, 
-    save_optimization_history, 
-    load_optimization_history, 
-    delete_optimization_history_entry
-)
+from utils import create_output_excel, create_accessory_summary, validate_input_excel, save_optimization_history, load_optimization_history, delete_optimization_history_entry
 import uuid
 from datetime import datetime
 import threading
-import json
 
-# -------------------------------
-# Hàm hiển thị mô phỏng cắt thanh
-# -------------------------------
+# ============== Hàm mô phỏng cắt thanh ==============
 def display_pattern(row, cutting_gap):
     pattern = row['Mẫu Cắt']
     parts = pattern.split('+')
@@ -51,80 +41,71 @@ def display_pattern(row, cutting_gap):
         yaxis=dict(visible=False),
         showlegend=False
     )
-    st.plotly_chart(fig, use_container_width=True, key=f"plot_{row['Số Thanh']}_{uuid.uuid4()}")
+    unique_key = f"plot_{row['Số Thanh']}_{uuid.uuid4()}"
+    st.plotly_chart(fig, use_container_width=True, key=unique_key)
 
-# -------------------------------
-# App config
-# -------------------------------
+
+# ============== Cài đặt trang ==============
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
-# Tải file
-uploaded_file = st.file_uploader("📤 Tải lên tệp Excel dữ liệu", type=["xlsx", "xls"])
+uploaded_file = st.file_uploader("📤 Tải tệp Excel", type=["xlsx", "xls"])
+
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
-# Tabs chính
-tab_intro, tab_upload, tab_accessory, tab_cutting = st.tabs(
-    ["📖 Giới Thiệu", "📁 Tải Mẫu Nhập", "📦 Tổng Hợp Phụ Kiện", "✂️ Tối Ưu Cắt Nhôm"]
-)
+tab_intro, tab_upload, tab_pk, tab_cut = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu", "📦 Phụ Kiện", "✂️ Tối Ưu Cắt"])
 
-# -------------------------------
-# Tab Giới Thiệu
-# -------------------------------
-with tab_intro:
-    st.header("📖 Giới thiệu và Hướng dẫn")
-    st.markdown("""
-    - **Chức năng**: Hỗ trợ tối ưu hóa cắt nhôm, quản lý phụ kiện, giảm phế liệu.
-    - Tải đúng mẫu, nhập liệu chính xác.
-    - Chọn kích thước, khoảng cách cắt, phương pháp tối ưu, bấm **Tối Ưu Hóa**.
-    - Xem mô phỏng cắt chi tiết.
-    """)
-
-# -------------------------------
-# Tab Tải Mẫu Nhập
-# -------------------------------
+# ============== Tab Tải Mẫu ==============
 with tab_upload:
-    st.header("📥 Tải xuống file mẫu")
+    st.header("📁 Tải Mẫu Nhập")
+    st.markdown("""
+    👉 Tải mẫu chuẩn:
+    - **Mẫu Cắt Nhôm**: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` (tùy chọn)
+    - **Mẫu Phụ Kiện**: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
+    """)
     nhom_sample = pd.DataFrame({
-        'Mã Thanh': ['ABC'], 'Chiều Dài': [1000], 'Số Lượng': [2], 'Mã Cửa': ['D001']
+        'Mã Thanh': ['TNG1'],
+        'Chiều Dài': [2000],
+        'Số Lượng': [2],
+        'Mã Cửa': ['D001']
     })
-    out_nhom = io.BytesIO()
-    nhom_sample.to_excel(out_nhom, index=False)
-    out_nhom.seek(0)
-    st.download_button("📄 Tải Mẫu Cắt Nhôm", out_nhom, "mau_cat_nhom.xlsx")
+    out1 = io.BytesIO()
+    nhom_sample.to_excel(out1, index=False)
+    out1.seek(0)
+    st.download_button("📄 Mẫu Cắt Nhôm", out1, "mau_cat_nhom.xlsx")
 
     pk_sample = pd.DataFrame({
-        'Mã phụ kiện': ['PK001'], 'Tên phụ phiện': ['Gioăng'],
-        'Đơn vị tính': ['cái'], 'Số lượng': [10]
+        'Mã phụ kiện': ['PK001'],
+        'Tên phụ phiện': ['Gioăng'],
+        'Đơn vị tính': ['cái'],
+        'Số lượng': [10]
     })
-    out_pk = io.BytesIO()
-    pk_sample.to_excel(out_pk, index=False)
-    out_pk.seek(0)
-    st.download_button("📄 Tải Mẫu Phụ Kiện", out_pk, "mau_phu_kien.xlsx")
+    out2 = io.BytesIO()
+    pk_sample.to_excel(out2, index=False)
+    out2.seek(0)
+    st.download_button("📄 Mẫu Phụ Kiện", out2, "mau_phu_kien.xlsx")
 
-# -------------------------------
-# Tab Tổng Hợp Phụ Kiện
-# -------------------------------
-with tab_accessory:
+
+# ============== Tab Tổng Hợp Phụ Kiện ==============
+with tab_pk:
     st.header("📦 Tổng Hợp Phụ Kiện")
     if uploaded_file:
         try:
-            acc_df = pd.read_excel(uploaded_file)
+            df = pd.read_excel(uploaded_file)
             output = io.BytesIO()
-            summary_df = create_accessory_summary(acc_df, output)
+            summary = create_accessory_summary(df, output)
             output.seek(0)
-            st.success("✅ Đã tổng hợp phụ kiện.")
-            st.dataframe(summary_df)
-            st.download_button("📥 Tải Xuống Kết Quả", output, "tong_hop_phu_kien.xlsx")
+            st.success("✅ Tổng hợp thành công!")
+            st.dataframe(summary)
+            st.download_button("📥 Tải File Phụ Kiện", output, "tong_hop_phu_kien.xlsx")
         except:
-            st.warning("⚠️ File không phù hợp!")
+            st.warning("⚠️ Không phải file phụ kiện hoặc thiếu cột!")
 
-# -------------------------------
-# Tab Tối Ưu Cắt Nhôm
-# -------------------------------
-with tab_cutting:
-    st.header("✂️ Tối Ưu Cắt Nhôm")
+
+# ============== Tab Tối Ưu Cắt Nhôm ==============
+with tab_cut:
+    st.header("✂️ Tối Ưu Hóa Cắt Nhôm")
     if uploaded_file:
         try:
             df = pd.read_excel(uploaded_file)
@@ -132,48 +113,63 @@ with tab_cutting:
             if not valid:
                 st.error(msg)
             else:
-                st.success("✅ File hợp lệ.")
+                st.success("✅ File cắt nhôm hợp lệ.")
                 st.dataframe(df)
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    length_opts = st.text_input("Kích Thước Thanh (phẩy)", "5800, 6000")
+                    lengths_text = st.text_input("Kích Thước Thanh (mm, phẩy)", "5800, 6000")
                 with col2:
-                    gap = st.number_input("Khoảng Cách Cắt", 1, 100, 10, 1)
+                    gap = st.number_input("Khoảng Cách Cắt (mm)", 1, 100, 10, 1)
+                with col3:
+                    method = st.selectbox("Phương Pháp Tối Ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
 
                 if st.button("🚀 Tối Ưu Hóa"):
-                    try:
-                        stock_lengths = [int(x.strip()) for x in length_opts.split(',') if x.strip().isdigit()]
-                        result_df, patterns_df, summary_df = optimize_cutting(
-                            df, stock_length=stock_lengths[0],
-                            cutting_gap=gap,
-                            stock_length_options=stock_lengths,
-                            optimize_stock_length=True
-                        )
-                        st.session_state.result_data = (result_df, patterns_df, summary_df, stock_lengths, gap)
-                    except Exception as e:
-                        st.error(f"Lỗi tối ưu: {e}")
+                    stock_lengths = [int(x.strip()) for x in lengths_text.split(',') if x.strip().isdigit()]
+                    if not stock_lengths:
+                        st.error("Nhập ít nhất 1 kích thước.")
+                    else:
+                        try:
+                            start = time.time()
+                            result_df, patterns_df, summary_df = optimize_cutting(
+                                df,
+                                stock_length=stock_lengths[0],
+                                cutting_gap=gap,
+                                stock_length_options=stock_lengths,
+                                optimize_stock_length=True
+                            )
+                            st.session_state.result_data = (result_df, patterns_df, summary_df, stock_lengths, gap)
+                            elapsed = time.time() - start
+                            st.success(f"✅ Xong sau {elapsed:.1f}s")
+                        except Exception as e:
+                            st.error(f"Lỗi tối ưu: {e}")
+        except Exception as e:
+            st.error(f"Lỗi: {e}")
+    else:
+        st.info("📤 Vui lòng tải file trước!")
 
+    # ✅ Ngoài `try`
     if st.session_state.result_data:
         result_df, patterns_df, summary_df, stock_lengths, gap = st.session_state.result_data
-        st.subheader("📊 Bảng Tổng Hợp Hiệu Suất")
+        st.subheader("📊 Hiệu Suất")
         st.dataframe(summary_df)
-        st.subheader("📋 Danh Sách Mẫu Cắt")
+        st.subheader("📋 Mẫu Cắt")
         st.dataframe(patterns_df)
         st.subheader("📄 Chi Tiết Mảnh")
         st.dataframe(result_df)
 
-        st.subheader("📏 Mô Phỏng")
-        selected = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
-        filtered = patterns_df[patterns_df['Mã Thanh'] == selected]
-        for _, row in filtered.iterrows():
-            st.markdown(f"**🔹 #{row['Số Thanh']} | {selected} | {row['Chiều Dài Thanh']}mm**")
+        st.subheader("📊 Mô Phỏng")
+        selected_profile = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
+        filtered = patterns_df[patterns_df['Mã Thanh'] == selected_profile]
+        for idx, row in filtered.iterrows():
+            st.markdown(f"🔹 #{row['Số Thanh']} | {selected_profile} | {row['Chiều Dài Thanh']}mm")
             display_pattern(row, gap)
 
-        output = io.BytesIO()
-        create_output_excel(output, result_df, patterns_df, summary_df, stock_lengths, gap)
-        output.seek(0)
-        st.download_button("📥 Tải Xuống File Kết Quả", output, "ket_qua_cat_nhom.xlsx")
+        out = io.BytesIO()
+        create_output_excel(out, result_df, patterns_df, summary_df, stock_lengths, gap)
+        out.seek(0)
+        st.download_button("📥 Tải File Kết Quả", out, "ket_qua_cat_nhom.xlsx")
 
-# -------------------------------
-st.markdown("---")
-st.info("💡 Liên hệ hỗ trợ Zalo: 0977 487 639")
+---
+
+**✅ Bạn chỉ cần copy, thay `cutting_optimizer` và `utils` cho phù hợp.**  
+Muốn tôi đóng gói **trọn bộ `utils.py` mới**, tôi gửi kèm luôn nhé? 🚀
