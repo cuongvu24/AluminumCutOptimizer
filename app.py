@@ -7,11 +7,14 @@ from cutting_optimizer import optimize_cutting
 from utils import (
     create_output_excel,
     create_accessory_summary,
-    validate_input_excel
+    validate_input_excel,
+    save_optimization_history,
+    load_optimization_history,
+    delete_optimization_history_entry
 )
 import uuid
 
-# === Hàm mô phỏng ===
+# ================== Hàm mô phỏng ==================
 def display_pattern(row, cutting_gap):
     pattern = row['Mẫu Cắt']
     parts = pattern.split('+')
@@ -20,7 +23,7 @@ def display_pattern(row, cutting_gap):
 
     for i, part in enumerate(parts):
         length = float(part)
-        color = f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)" if i > 0 else "rgba(255, 100, 100, 0.9)"
+        color = f"rgba({(i*50)%255}, {(i*80)%255}, {(i*110)%255}, 0.8)" if i > 0 else "rgba(255, 80, 80, 0.9)"
         fig.add_shape(
             type="rect",
             x0=current_pos, x1=current_pos + length,
@@ -30,7 +33,7 @@ def display_pattern(row, cutting_gap):
         )
         fig.add_annotation(
             x=current_pos + length / 2, y=0.5,
-            text=str(int(length)),
+            text=f"{length:.1f}" if length % 1 else str(int(length)),
             showarrow=False,
             font=dict(size=10, color="white")
         )
@@ -40,170 +43,141 @@ def display_pattern(row, cutting_gap):
         height=100,
         margin=dict(l=10, r=10, t=10, b=10),
         xaxis=dict(title="", range=[0, row['Chiều Dài Thanh']]),
-        yaxis=dict(visible=False),
-        showlegend=False
+        yaxis=dict(visible=False)
     )
-    unique_key = f"plot_{row['Số Thanh']}_{uuid.uuid4()}"
-    st.plotly_chart(fig, use_container_width=True, key=unique_key)
+    st.plotly_chart(fig, use_container_width=True, key=f"plot_{row['Số Thanh']}_{uuid.uuid4()}")
 
-
-# === Cài đặt ===
+# ================== Trang ==================
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
-st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
+st.title("🧩 Phần mềm Hỗ Trợ Sản Xuất Cửa")
 
 uploaded_file = st.file_uploader("📤 Tải tệp Excel", type=["xlsx", "xls"])
 
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
-tab_intro, tab_upload, tab_pk, tab_cut = st.tabs(
-    ["📖 Giới Thiệu", "📁 Tải Mẫu", "📦 Phụ Kiện", "✂️ Tối Ưu Cắt"]
-)
+tab_intro, tab_upload, tab_pk, tab_cut = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu", "📦 Phụ Kiện", "✂️ Tối Ưu Cắt"])
 
-# === Tab Giới Thiệu ===
+# ================== Giới Thiệu ==================
 with tab_intro:
-    st.subheader("📖 Giới Thiệu")
+    st.subheader("📖 Giới Thiệu và Hướng Dẫn")
     st.markdown("""
-    👉 **File Cắt Nhôm**: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa`  
-    👉 **File Phụ Kiện**: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
+    **✅ Phần mềm hỗ trợ cắt nhôm & phụ kiện:**  
+    - Hỗ trợ nhập file Excel.  
+    - Giảm phế liệu, xuất file báo cáo.  
+    - Quản lý **Mã Cửa**, **Mã Mảnh** đầy đủ.
+
+    **Bước 1:** Tải mẫu.  
+    **Bước 2:** Nhập dữ liệu.  
+    **Bước 3:** Tải lên file.  
+    **Bước 4:** Chạy tối ưu & tải file kết quả!
     """)
 
-# === Tab Mẫu ===
+# ================== Mẫu ==================
 with tab_upload:
-    st.subheader("📁 Tải Mẫu")
-    nhom_sample = pd.DataFrame({
-        'Mã Thanh': ['TNG1'],
-        'Chiều Dài': [2000],
+    st.header("📁 Tải Mẫu")
+    nhom = pd.DataFrame({
+        'Mã Thanh': ['ABC1'],
+        'Chiều Dài': [1000],
         'Số Lượng': [2],
-        'Mã Cửa': ['D001']
+        'Mã Cửa': ['D1']
     })
-    out1 = io.BytesIO()
-    nhom_sample.to_excel(out1, index=False)
-    out1.seek(0)
-    st.download_button("📄 Mẫu Cắt Nhôm", out1, "mau_cat_nhom.xlsx")
-
-    pk_sample = pd.DataFrame({
-        'Mã phụ kiện': ['PK001'],
-        'Tên phụ phiện': ['Gioăng'],
+    pk = pd.DataFrame({
+        'Mã phụ kiện': ['PK01'],
+        'Tên phụ phiện': ['Bulong'],
         'Đơn vị tính': ['cái'],
         'Số lượng': [10]
     })
-    out2 = io.BytesIO()
-    pk_sample.to_excel(out2, index=False)
+
+    out1, out2 = io.BytesIO(), io.BytesIO()
+    nhom.to_excel(out1, index=False)
+    pk.to_excel(out2, index=False)
+    out1.seek(0)
     out2.seek(0)
+
+    st.download_button("📄 Mẫu Cắt Nhôm", out1, "mau_cat_nhom.xlsx")
     st.download_button("📄 Mẫu Phụ Kiện", out2, "mau_phu_kien.xlsx")
 
-# === Tab Phụ Kiện ===
+# ================== Phụ Kiện ==================
 with tab_pk:
     st.header("📦 Tổng Hợp Phụ Kiện")
     if uploaded_file:
         try:
             df = pd.read_excel(uploaded_file)
-            output = io.BytesIO()
-            summary = create_accessory_summary(df, output)
-            output.seek(0)
-            st.success("✅ Tổng hợp thành công!")
+            out = io.BytesIO()
+            summary = create_accessory_summary(df, out)
+            out.seek(0)
             st.dataframe(summary)
-            st.download_button("📥 Tải File Phụ Kiện", output, "tong_hop_phu_kien.xlsx")
-        except Exception as e:
-            st.warning(f"⚠️ File không phù hợp hoặc thiếu cột! {e}")
+            st.download_button("📥 Tải File Phụ Kiện", out, "tong_hop_phu_kien.xlsx")
+        except:
+            st.warning("⚠️ File phụ kiện không hợp lệ!")
 
-# === Tab Tối Ưu ===
+# ================== Tối Ưu Cắt ==================
 with tab_cut:
     st.header("✂️ Tối Ưu Cắt Nhôm")
     if uploaded_file:
-        try:
-            df = pd.read_excel(uploaded_file)
-            valid, msg = validate_input_excel(df)
-            if not valid:
-                st.error(msg)
-            else:
-                st.success("✅ File hợp lệ.")
-                st.dataframe(df)
+        df = pd.read_excel(uploaded_file)
+        valid, msg = validate_input_excel(df)
+        if not valid:
+            st.error(msg)
+        else:
+            st.dataframe(df)
+            col1, col2, col3 = st.columns(3)
+            lengths = col1.text_input("Kích Thước Thanh (phẩy)", "5800, 6000")
+            gap = col2.number_input("Khoảng Cách Cắt (mm)", 1, 100, 10)
+            method = col3.selectbox("Phương Pháp", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
 
-                col1, col2 = st.columns(2)
-                lengths_text = col1.text_input("Kích Thước Thanh (phẩy)", "5800, 6000")
-                gap = col2.number_input("Khoảng Cách Cắt (mm)", 1, 100, 10)
+            if st.button("🚀 Tối Ưu"):
+                stocks = [int(x.strip()) for x in lengths.split(',') if x.strip().isdigit()]
+                if not stocks:
+                    st.error("Thiếu kích thước thanh.")
+                else:
+                    res, pat, sum_df = optimize_cutting(
+                        df,
+                        stock_length=stocks[0],
+                        cutting_gap=gap,
+                        optimization_method=method,
+                        stock_length_options=stocks,
+                        optimize_stock_length=True
+                    )
+                    # Thêm Mã Cửa vào result
+                    if 'Mã Cửa' in df.columns:
+                        id_map = {}
+                        for _, row in df.iterrows():
+                            for i in range(int(row['Số Lượng'])):
+                                id_map[f"{row['Mã Thanh']}_{i+1}"] = row['Mã Cửa']
+                        res['Mã Cửa'] = res['Item ID'].map(id_map)
 
-                if st.button("🚀 Tối Ưu"):
-                    stock_lengths = [int(x.strip()) for x in lengths_text.split(',') if x.strip().isdigit()]
-                    try:
-                        result_df, patterns_df, summary_df = optimize_cutting(
-                            df,
-                            stock_length=stock_lengths[0],
-                            cutting_gap=gap,
-                            stock_length_options=stock_lengths,
-                            optimize_stock_length=True
-                        )
+                    res = res.rename(columns={
+                        'Profile Code': 'Mã Thanh',
+                        'Item ID': 'Mã Mảnh',
+                        'Length': 'Chiều Dài',
+                        'Bar Number': 'Số Thanh'
+                    })
 
-                        if 'Mã Cửa' in df.columns:
-                            id_to_cua = {}
-                            for _, row in df.iterrows():
-                                for i in range(int(row['Số Lượng'])):
-                                    id_to_cua[f"{row['Mã Thanh']}_{i+1}"] = row['Mã Cửa']
-                            result_df['Mã Cửa'] = result_df['Item ID'].map(id_to_cua)
-
-                        result_df = result_df.rename(columns={
-                            'Profile Code': 'Mã Thanh',
-                            'Item ID': 'Mã Mảnh',
-                            'Length': 'Chiều Dài',
-                            'Bar Number': 'Số Thanh'
-                        })
-
-                        patterns_df = patterns_df.rename(columns={
-                            'Profile Code': 'Mã Thanh',
-                            'Bar Number': 'Số Thanh',
-                            'Stock Length': 'Chiều Dài Thanh',
-                            'Used Length': 'Chiều Dài Sử Dụng',
-                            'Remaining Length': 'Chiều Dài Còn Lại',
-                            'Efficiency': 'Hiệu Suất',
-                            'Cutting Pattern': 'Mẫu Cắt',
-                            'Pieces': 'Số Mảnh'
-                        })
-
-                        summary_df = summary_df.rename(columns={
-                            'Profile Code': 'Mã Thanh',
-                            'Total Pieces': 'Tổng Số Đoạn',
-                            'Total Bars Used': 'Tổng Thanh Sử Dụng',
-                            'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
-                            'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
-                            'Waste (mm)': 'Phế Liệu (mm)',
-                            'Overall Efficiency': 'Hiệu Suất Tổng Thể'
-                        })
-
-                        st.session_state.result_data = (result_df, patterns_df, summary_df, stock_lengths, gap)
-                        st.success("✅ Hoàn tất!")
-
-                    except Exception as e:
-                        st.error(f"❌ Lỗi: {e}")
-        except Exception as e:
-            st.error(f"❌ Lỗi đọc file: {e}")
-    else:
-        st.info("📤 Tải file để bắt đầu!")
+                    st.session_state.result_data = (res, pat, sum_df, stocks, gap)
+                    st.success("✅ Tối ưu xong!")
 
     if st.session_state.result_data:
-        result_df, patterns_df, summary_df, stock_lengths, gap = st.session_state.result_data
-        st.subheader("📊 Tổng Hợp")
-        st.dataframe(summary_df)
-
+        res, pat, sum_df, stocks, gap = st.session_state.result_data
+        st.subheader("📊 Hiệu Suất")
+        st.dataframe(sum_df)
         st.subheader("📋 Mẫu Cắt")
-        st.dataframe(patterns_df)
-
+        st.dataframe(pat)
         st.subheader("📄 Chi Tiết Mảnh (Có Mã Cửa)")
-        st.dataframe(result_df[['Mã Thanh', 'Mã Mảnh', 'Mã Cửa', 'Chiều Dài', 'Số Thanh']])
+        st.dataframe(res)
 
         st.subheader("📊 Mô Phỏng")
-        selected = st.selectbox("Chọn Mã Thanh", patterns_df['Mã Thanh'].unique())
-        filtered = patterns_df[patterns_df['Mã Thanh'] == selected]
-        for _, row in filtered.iterrows():
-            st.markdown(f"🔹 #{row['Số Thanh']} | {selected} | {int(row['Chiều Dài Thanh'])}mm")
+        sel = st.selectbox("Chọn Mã Thanh", pat['Mã Thanh'].unique())
+        for idx, row in pat[pat['Mã Thanh'] == sel].iterrows():
+            st.markdown(f"🔹 #{row['Số Thanh']} | {sel} | {row['Chiều Dài Thanh']}mm")
             display_pattern(row, gap)
 
         out = io.BytesIO()
-        create_output_excel(out, result_df, patterns_df, summary_df, stock_lengths, gap)
+        create_output_excel(out, res, pat, sum_df, stocks, gap)
         out.seek(0)
-        st.download_button("📥 Tải File Kết Quả", out, "ket_qua_cat_nhom.xlsx")
+        st.download_button("📥 Tải Kết Quả", out, "ket_qua_cat_nhom.xlsx")
 
-# === Footer ===
+# ================== Footer ==================
 st.markdown("---")
-st.markdown("📞 Zalo hỗ trợ: 0977 487 639")
+st.markdown("📞 Zalo **0977 487 639** — Ứng dụng hỗ trợ sản xuất cửa © 2025")
