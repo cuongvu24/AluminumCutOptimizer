@@ -10,9 +10,10 @@ from utils import (
     validate_input_excel,
     save_optimization_history,
     load_optimization_history,
-    delete_optimization_history_entry,
+    delete_optimization_history_entry
 )
 import uuid
+from datetime import datetime
 
 # ============== Hàm mô phỏng cắt thanh ==============
 def display_pattern(row, cutting_gap):
@@ -23,10 +24,7 @@ def display_pattern(row, cutting_gap):
 
     for i, part in enumerate(parts):
         length = float(part)
-        color = (
-            f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)"
-            if i > 0 else "rgba(255, 100, 100, 0.9)"
-        )
+        color = f"rgba({(i*40)%255}, {(i*70)%255}, {(i*90)%255}, 0.7)" if i > 0 else "rgba(255, 100, 100, 0.9)"
         fig.add_shape(
             type="rect",
             x0=current_pos, x1=current_pos + length,
@@ -52,7 +50,6 @@ def display_pattern(row, cutting_gap):
     unique_key = f"plot_{row['Số Thanh']}_{uuid.uuid4()}"
     st.plotly_chart(fig, use_container_width=True, key=unique_key)
 
-
 # ============== Cài đặt trang ==============
 st.set_page_config(page_title="Phần mềm Hỗ Trợ Sản Xuất Cửa", layout="wide")
 st.title("🤖 Phần mềm Hỗ Trợ Sản Xuất Cửa")
@@ -62,23 +59,27 @@ uploaded_file = st.file_uploader("📤 Tải tệp Excel", type=["xlsx", "xls"])
 if 'result_data' not in st.session_state:
     st.session_state.result_data = None
 
-tab_intro, tab_upload, tab_pk, tab_cut = st.tabs(["📖 Giới Thiệu", "📁 Tải Mẫu", "📦 Phụ Kiện", "✂️ Tối Ưu Cắt"])
+tab_intro, tab_upload, tab_pk, tab_cut = st.tabs(
+    ["📖 Giới Thiệu", "📁 Tải Mẫu", "📦 Phụ Kiện", "✂️ Tối Ưu Cắt"]
+)
 
 # ============== Tab Giới Thiệu ==============
 with tab_intro:
     st.subheader("📖 Giới Thiệu và Hướng Dẫn Sử Dụng")
     st.markdown("""
-    ### Giới thiệu
-    **Phần mềm Hỗ Trợ Sản Xuất Cửa** giúp tối ưu hóa quy trình cắt nhôm và quản lý phụ kiện.  
-    👉 **Tải file mẫu**, nhập liệu, tối ưu cắt và tải kết quả ngay!
-
-    - **Mẫu Cắt Nhôm**: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` *(tùy chọn)*
-    - **Mẫu Phụ Kiện**: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
+    **Ứng dụng hỗ trợ tối ưu cắt nhôm và tổng hợp phụ kiện, giúp giảm phế liệu, tiết kiệm thời gian và chi phí.**  
+    👉 Chọn tab **Tải Mẫu** để tải file mẫu, điền dữ liệu đúng định dạng rồi quay lại tab **Tổng Hợp Phụ Kiện** hoặc **Tối Ưu Cắt** để chạy tính toán.
     """)
 
 # ============== Tab Tải Mẫu ==============
 with tab_upload:
     st.header("📁 Tải Mẫu Nhập")
+    st.markdown("""
+    👉 **Mẫu nhập chuẩn:**
+    - **Cắt Nhôm**: `Mã Thanh`, `Chiều Dài`, `Số Lượng`, `Mã Cửa` *(tùy chọn)*
+    - **Phụ Kiện**: `Mã phụ kiện`, `Tên phụ phiện`, `Đơn vị tính`, `Số lượng`
+    """)
+
     nhom_sample = pd.DataFrame({
         'Mã Thanh': ['TNG1'],
         'Chiều Dài': [2000],
@@ -101,7 +102,7 @@ with tab_upload:
     out2.seek(0)
     st.download_button("📄 Mẫu Phụ Kiện", out2, "mau_phu_kien.xlsx")
 
-# ============== Tab Phụ Kiện ==============
+# ============== Tab Tổng Hợp Phụ Kiện ==============
 with tab_pk:
     st.header("📦 Tổng Hợp Phụ Kiện")
     if uploaded_file:
@@ -114,9 +115,7 @@ with tab_pk:
             st.dataframe(summary)
             st.download_button("📥 Tải File Phụ Kiện", output, "tong_hop_phu_kien.xlsx")
         except Exception as e:
-            st.warning(f"⚠️ Không phải file phụ kiện hoặc lỗi: {e}")
-    else:
-        st.info("📤 Vui lòng tải tệp phụ kiện!")
+            st.warning(f"⚠️ Lỗi: {e}")
 
 # ============== Tab Tối Ưu Cắt Nhôm ==============
 with tab_cut:
@@ -130,16 +129,14 @@ with tab_cut:
             else:
                 st.success("✅ File cắt nhôm hợp lệ.")
                 st.dataframe(df)
+
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     lengths_text = st.text_input("Kích Thước Thanh (mm, phẩy)", "5800, 6000")
                 with col2:
                     gap = st.number_input("Khoảng Cách Cắt (mm)", 1, 100, 10, 1)
                 with col3:
-                    method = st.selectbox(
-                        "Phương Pháp Tối Ưu",
-                        ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"]
-                    )
+                    method = st.selectbox("Phương Pháp Tối Ưu", ["Tối Ưu Hiệu Suất Cao Nhất", "Tối Ưu Số Lượng Thanh"])
 
                 if st.button("🚀 Tối Ưu Hóa"):
                     stock_lengths = [int(x.strip()) for x in lengths_text.split(',') if x.strip().isdigit()]
@@ -155,19 +152,47 @@ with tab_cut:
                                 stock_length_options=stock_lengths,
                                 optimize_stock_length=True
                             )
-                            st.session_state.result_data = (result_df, patterns_df, summary_df, stock_lengths, gap)
+
+                            # ✅ Rename cột cho đồng nhất
+                            patterns_df = patterns_df.rename(columns={
+                                'Profile Code': 'Mã Thanh',
+                                'Bar Number': 'Số Thanh',
+                                'Stock Length': 'Chiều Dài Thanh',
+                                'Used Length': 'Chiều Dài Sử Dụng',
+                                'Remaining Length': 'Chiều Dài Còn Lại',
+                                'Efficiency': 'Hiệu Suất',
+                                'Cutting Pattern': 'Mẫu Cắt',
+                                'Pieces': 'Số Mảnh'
+                            })
+                            result_df = result_df.rename(columns={
+                                'Profile Code': 'Mã Thanh',
+                                'Item ID': 'Mã Mảnh',
+                                'Bar Number': 'Số Thanh'
+                            })
+                            summary_df = summary_df.rename(columns={
+                                'Profile Code': 'Mã Thanh',
+                                'Total Pieces': 'Tổng Số Đoạn',
+                                'Total Bars Used': 'Tổng Thanh Sử Dụng',
+                                'Total Length Needed (mm)': 'Tổng Chiều Dài Cần (mm)',
+                                'Total Stock Length (mm)': 'Tổng Chiều Dài Nguyên Liệu (mm)',
+                                'Waste (mm)': 'Phế Liệu (mm)',
+                                'Overall Efficiency': 'Hiệu Suất Tổng Thể',
+                                'Average Bar Efficiency': 'Hiệu Suất Trung Bình'
+                            })
+
                             elapsed = time.time() - start
+                            st.session_state.result_data = (result_df, patterns_df, summary_df, stock_lengths, gap)
                             st.success(f"✅ Xong sau {elapsed:.1f}s")
                         except Exception as e:
                             st.error(f"Lỗi tối ưu: {e}")
         except Exception as e:
-            st.error(f"Lỗi đọc file: {e}")
+            st.error(f"Lỗi: {e}")
     else:
-        st.info("📤 Vui lòng tải file cắt nhôm!")
+        st.info("📤 Vui lòng tải file trước!")
 
     if st.session_state.result_data:
         result_df, patterns_df, summary_df, stock_lengths, gap = st.session_state.result_data
-        st.subheader("📊 Hiệu Suất")
+        st.subheader("📊 Bảng Hiệu Suất")
         st.dataframe(summary_df)
         st.subheader("📋 Mẫu Cắt")
         st.dataframe(patterns_df)
